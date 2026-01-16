@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 15, 23, 42;
+  --background-rgb: 248, 250, 252;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  font-feature-settings: "cv11", "ss01";
+  font-variation-settings: "opsz" 32;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: #bae6fd;
+  color: #0c4a6e;
+}
+
+/* Table styles */
+.data-table {
+  @apply w-full border-collapse;
+}
+
+.data-table th {
+  @apply text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 bg-slate-50 border-b border-slate-200;
+}
+
+.data-table td {
+  @apply px-4 py-3 border-b border-slate-100 text-sm;
+}
+
+.data-table tr:hover td {
+  @apply bg-slate-50;
+}
+
+.data-table tr.selected td {
+  @apply bg-brand-50;
+}
+
+/* Kanban card */
+.kanban-card {
+  @apply bg-white rounded-lg border border-slate-200 p-3 cursor-pointer transition-all duration-150;
+  @apply hover:shadow-kanban hover:border-slate-300;
+}
+
+.kanban-card.dragging {
+  @apply shadow-lg rotate-2 opacity-90;
+}
+
+.kanban-column {
+  @apply bg-slate-100 rounded-xl p-3 min-h-[200px];
+}
+
+/* Score badges */
+.score-badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+}
+
+.score-hot {
+  @apply bg-red-100 text-red-800;
+}
+
+.score-warm {
+  @apply bg-orange-100 text-orange-800;
+}
+
+.score-cool {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.score-cold {
+  @apply bg-slate-100 text-slate-600;
+}
+
+/* Stage badges */
+.stage-badge {
+  @apply inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium;
+}
+
+/* Activity timeline */
+.timeline-item {
+  @apply relative pl-8 pb-6 last:pb-0;
+}
+
+.timeline-item::before {
+  content: '';
+  @apply absolute left-3 top-2 bottom-0 w-px bg-slate-200;
+}
+
+.timeline-item:last-child::before {
+  @apply hidden;
+}
+
+.timeline-dot {
+  @apply absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center;
+}
+
+/* Stat cards */
+.stat-card {
+  @apply bg-white rounded-xl border border-slate-200 p-5;
+}
+
+.stat-value {
+  @apply text-3xl font-semibold text-slate-900;
+}
+
+.stat-label {
+  @apply text-sm text-slate-500 mt-1;
+}
+
+.stat-change {
+  @apply text-xs font-medium mt-2;
+}
+
+.stat-change.positive {
+  @apply text-green-600;
+}
+
+.stat-change.negative {
+  @apply text-red-600;
+}
+
+/* Premium section styling */
+.premium-section {
+  @apply relative overflow-hidden;
+  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%);
+}
+
+.premium-glow {
+  @apply absolute inset-0 opacity-30;
+  background: radial-gradient(ellipse at top right, #38bdf8, transparent 50%);
+}
+
+/* Locked overlay */
+.locked-overlay {
+  @apply absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10;
+}
+
+/* Button variants */
+.btn {
+  @apply inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700;
+  @apply focus-visible:ring-brand-500;
+}
+
+.btn-secondary {
+  @apply bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300;
+  @apply focus-visible:ring-slate-500;
+}
+
+.btn-ghost {
+  @apply text-slate-600 hover:bg-slate-100 active:bg-slate-200;
+  @apply focus-visible:ring-slate-500;
+}
+
+.btn-danger {
+  @apply bg-red-500 text-white hover:bg-red-600 active:bg-red-700;
+  @apply focus-visible:ring-red-500;
+}
+
+.btn-sm {
+  @apply text-sm px-3 py-1.5;
+}
+
+.btn-md {
+  @apply text-sm px-4 py-2;
+}
+
+.btn-lg {
+  @apply text-base px-6 py-3;
+}
+
+/* Input styles */
+.input {
+  @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm;
+  @apply placeholder:text-slate-400;
+  @apply focus:border-brand-500 focus:ring-1 focus:ring-brand-500;
+  @apply disabled:bg-slate-50 disabled:text-slate-500;
+}
+
+.input-error {
+  @apply border-red-500 focus:border-red-500 focus:ring-red-500;
+}
+
+/* Animation utilities */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.2s ease-out;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply animate-pulse bg-slate-200 rounded;
+}
+
+/* Empty state */
+.empty-state {
+  @apply flex flex-col items-center justify-center py-12 text-center;
+}
+
+.empty-state-icon {
+  @apply w-16 h-16 text-slate-300 mb-4;
+}
+
+.empty-state-title {
+  @apply text-lg font-medium text-slate-900 mb-1;
+}
+
+.empty-state-description {
+  @apply text-sm text-slate-500 mb-4 max-w-md;
+}

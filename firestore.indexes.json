@@ -1,0 +1,124 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assigned_agent_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_exclusive", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "current_stage_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "source", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assigned_agent_id", "order": "ASCENDING" },
+        { "fieldPath": "is_exclusive", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phone", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "opportunities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stage_id", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "opportunities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assigned_agent_id", "order": "ASCENDING" },
+        { "fieldPath": "stage_id", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "opportunities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lead_id", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "activities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lead_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "activities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lead_id", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "properties",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "linked_lead_ids", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "properties",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "seller_score", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "raw_leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "processed", "order": "ASCENDING" },
+        { "fieldPath": "processing_attempts", "order": "ASCENDING" },
+        { "fieldPath": "received_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "raw_leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dedup_key", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
