@@ -1,398 +1,275 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { DemoLayout } from '@/components/layout';
-import { getAllLeads } from '@/lib/api';
-import type { Property, Lead } from '@/types/entities';
-import { formatDistanceToNow } from 'date-fns';
+import { useState } from 'react';
+import { 
+  Home, 
+  MapPin, 
+  Search,
+  Filter,
+  DollarSign,
+  Bed,
+  Bath,
+  Car,
+  Calendar,
+  ExternalLink
+} from 'lucide-react';
 
-interface PropertiesResponse {
-  properties: Property[];
-  total: number;
-  page: number;
-  perPage: number;
+interface Property {
+  id: number;
+  address: string;
+  suburb: string;
+  propertyType: string;
+  price: string;
+  bedrooms: number;
+  bathrooms: number;
+  parking: number;
+  landSize: string;
+  listedDate: string;
+  daysOnMarket: number;
+  image: string;
+  agent: string;
 }
 
-async function fetchProperties(params: {
-  page: number;
-  limit: number;
-  search?: string;
-  minScore?: number;
-}): Promise<PropertiesResponse> {
-  // Use MongoDB API - properties are part of leads data
-  const response = await getAllLeads({
-    page: params.page,
-    perPage: params.limit,
-    search: params.search,
-    sellingScore: params.minScore ? { min: params.minScore, max: 100 } : undefined,
-  });
-  
-  // Transform leads to properties format
-  const properties = (response.leads as Array<{ property?: Property }>)
-    .map(lead => lead.property)
-    .filter((p): p is Property => !!p);
-  
-  return {
-    properties,
-    total: response.total,
-    page: response.page,
-    perPage: response.perPage,
-  };
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 80) return 'bg-green-100 text-green-800';
-  if (score >= 60) return 'bg-yellow-100 text-yellow-800';
-  if (score >= 40) return 'bg-orange-100 text-orange-800';
-  return 'bg-red-100 text-red-800';
-}
-
-function getScoreLabel(score: number): string {
-  if (score >= 80) return 'Hot';
-  if (score >= 60) return 'Warm';
-  if (score >= 40) return 'Cool';
-  return 'Cold';
-}
+const properties: Property[] = [
+  {
+    id: 1,
+    address: '42 Ocean View Parade',
+    suburb: 'Mosman',
+    propertyType: 'House',
+    price: '$3,200,000',
+    bedrooms: 4,
+    bathrooms: 3,
+    parking: 2,
+    landSize: '650 sqm',
+    listedDate: '2024-01-05',
+    daysOnMarket: 12,
+    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop',
+    agent: 'Sarah Mitchell',
+  },
+  {
+    id: 2,
+    address: '18/50 Raglan Street',
+    suburb: 'Mosman',
+    propertyType: 'Apartment',
+    price: '$1,850,000',
+    bedrooms: 3,
+    bathrooms: 2,
+    parking: 1,
+    landSize: '120 sqm',
+    listedDate: '2024-01-08',
+    daysOnMarket: 9,
+    image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop',
+    agent: 'James Wilson',
+  },
+  {
+    id: 3,
+    address: '7 Burrawong Avenue',
+    suburb: 'Cremorne',
+    propertyType: 'House',
+    price: '$2,550,000',
+    bedrooms: 3,
+    bathrooms: 2,
+    parking: 2,
+    landSize: '450 sqm',
+    listedDate: '2024-01-10',
+    daysOnMarket: 7,
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop',
+    agent: 'Emma Thompson',
+  },
+  {
+    id: 4,
+    address: '23/12 The Corso',
+    suburb: 'Manly',
+    propertyType: 'Apartment',
+    price: '$1,400,000',
+    bedrooms: 2,
+    bathrooms: 1,
+    parking: 1,
+    landSize: '85 sqm',
+    listedDate: '2024-01-12',
+    daysOnMarket: 5,
+    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400&h=300&fit=crop',
+    agent: 'Michael Chen',
+  },
+  {
+    id: 5,
+    address: '88 Military Road',
+    suburb: 'Neutral Bay',
+    propertyType: 'Townhouse',
+    price: '$2,100,000',
+    bedrooms: 3,
+    bathrooms: 2,
+    parking: 2,
+    landSize: '180 sqm',
+    listedDate: '2024-01-15',
+    daysOnMarket: 2,
+    image: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=400&h=300&fit=crop',
+    agent: 'Rebecca Jones',
+  },
+  {
+    id: 6,
+    address: '5/22 Wycombe Road',
+    suburb: 'Neutral Bay',
+    propertyType: 'Apartment',
+    price: '$950,000',
+    bedrooms: 2,
+    bathrooms: 1,
+    parking: 1,
+    landSize: '75 sqm',
+    listedDate: '2024-01-14',
+    daysOnMarket: 3,
+    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop',
+    agent: 'David Park',
+  },
+];
 
 export default function PropertiesPage() {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [minScoreFilter, setMinScoreFilter] = useState<number | undefined>();
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [suburbFilter, setSuburbFilter] = useState<string>('all');
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['properties', page, search, minScoreFilter],
-    queryFn: () => fetchProperties({
-      page,
-      limit: 30,
-      search: search || undefined,
-      minScore: minScoreFilter,
-    }),
+  const suburbs = ['all', ...Array.from(new Set(properties.map(p => p.suburb)))];
+  const types = ['all', 'House', 'Apartment', 'Townhouse'];
+
+  const filteredProperties = properties.filter(property => {
+    const matchesSearch = property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         property.suburb.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === 'all' || property.propertyType === typeFilter;
+    const matchesSuburb = suburbFilter === 'all' || property.suburb === suburbFilter;
+    return matchesSearch && matchesType && matchesSuburb;
   });
 
   return (
     <DemoLayout currentPage="properties">
-      <div className="flex h-full">
-        {/* Main content */}
-        <div className={`flex-1 flex flex-col transition-all duration-300 ${selectedProperty ? 'mr-[400px]' : ''}`}>
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Properties</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {data?.total ?? 0} properties tracked
-                </p>
+      <div className="flex-1 overflow-auto bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Properties</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Track listings in your area</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search properties..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-64"
+                />
               </div>
-              
-              <div className="flex items-center space-x-3">
-                {/* Search */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search by address..."
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
-                    className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                  />
-                  <svg
-                    className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-
-                {/* Score Filter */}
-                <select
-                  value={minScoreFilter ?? ''}
-                  onChange={(e) => {
-                    setMinScoreFilter(e.target.value ? parseInt(e.target.value) : undefined);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                >
-                  <option value="">All Scores</option>
-                  <option value="80">Hot (80+)</option>
-                  <option value="60">Warm+ (60+)</option>
-                  <option value="40">Cool+ (40+)</option>
-                </select>
-              </div>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+              >
+                {types.map(type => (
+                  <option key={type} value={type}>
+                    {type === 'all' ? 'All Types' : type}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={suburbFilter}
+                onChange={(e) => setSuburbFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+              >
+                {suburbs.map(suburb => (
+                  <option key={suburb} value={suburb}>
+                    {suburb === 'all' ? 'All Suburbs' : suburb}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+        </div>
 
-          {/* Properties Grid */}
-          <div className="flex-1 overflow-auto p-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <p className="text-red-600 mb-2">Failed to load properties</p>
-                  <button onClick={() => refetch()} className="text-primary hover:underline">
-                    Try again
-                  </button>
+        {/* Stats */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center space-x-8 text-sm">
+            <div className="flex items-center space-x-2">
+              <Home className="w-4 h-4 text-blue-500" />
+              <span className="text-gray-600"><span className="font-semibold text-gray-900">{properties.length}</span> Properties</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-4 h-4 text-green-500" />
+              <span className="text-gray-600">Avg Price: <span className="font-semibold text-gray-900">$2.0M</span></span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span className="text-gray-600">Avg DOM: <span className="font-semibold text-gray-900">6 days</span></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Properties Grid */}
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredProperties.map(property => (
+              <div
+                key={property.id}
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <div className="relative">
+                  <img
+                    src={property.image}
+                    alt={property.address}
+                    className="w-full h-48 object-cover"
+                  />
+                  <span className="absolute top-3 left-3 px-2 py-1 bg-white/90 backdrop-blur text-xs font-medium rounded-lg">
+                    {property.propertyType}
+                  </span>
+                  <span className="absolute top-3 right-3 px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-lg">
+                    {property.daysOnMarket} days
+                  </span>
                 </div>
-              </div>
-            ) : data?.properties.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <svg className="mx-auto h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No properties found</h3>
-                  <p className="mt-2 text-sm text-gray-500">
-                    Properties are created when leads mention an address.
+                <div className="p-4">
+                  <p className="text-xl font-bold text-gray-900 mb-2">{property.price}</p>
+                  <h3 className="font-medium text-gray-900 mb-1">{property.address}</h3>
+                  <p className="text-sm text-gray-500 flex items-center mb-3">
+                    <MapPin className="w-3.5 h-3.5 mr-1" />
+                    {property.suburb}
                   </p>
+                  
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                    <span className="flex items-center">
+                      <Bed className="w-4 h-4 mr-1 text-gray-400" />
+                      {property.bedrooms}
+                    </span>
+                    <span className="flex items-center">
+                      <Bath className="w-4 h-4 mr-1 text-gray-400" />
+                      {property.bathrooms}
+                    </span>
+                    <span className="flex items-center">
+                      <Car className="w-4 h-4 mr-1 text-gray-400" />
+                      {property.parking}
+                    </span>
+                    <span className="text-gray-400">•</span>
+                    <span>{property.landSize}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <span className="text-sm text-gray-500">Agent: {property.agent}</span>
+                    <button className="flex items-center text-sm text-red-600 font-medium hover:text-red-700">
+                      View Details
+                      <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data?.properties.map((property) => (
-                  <div
-                    key={property.id}
-                    onClick={() => setSelectedProperty(property)}
-                    className={`bg-white rounded-lg border p-4 cursor-pointer transition-all hover:shadow-md ${
-                      selectedProperty?.id === property.id 
-                        ? 'border-primary ring-2 ring-primary ring-opacity-50' 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {/* Score Badge */}
-                    <div className="flex items-start justify-between mb-3">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getScoreColor(property.seller_score)}`}>
-                        {getScoreLabel(property.seller_score)} • {property.seller_score}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {property.linked_lead_ids.length} lead{property.linked_lead_ids.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-
-                    {/* Address */}
-                    <h3 className="font-medium text-gray-900 line-clamp-2 mb-2">
-                      {property.full_address}
-                    </h3>
-
-                    {/* Property Type & Beds/Baths */}
-                    {(property.property_type || property.bedrooms || property.bathrooms) && (
-                      <div className="flex items-center space-x-3 text-sm text-gray-500 mb-2">
-                        {property.property_type && (
-                          <span className="capitalize">{property.property_type}</span>
-                        )}
-                        {property.bedrooms && (
-                          <span>{property.bedrooms} bed</span>
-                        )}
-                        {property.bathrooms && (
-                          <span>{property.bathrooms} bath</span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Estimated Value */}
-                    {property.estimated_value && (
-                      <p className="text-lg font-semibold text-gray-900 mb-2">
-                        ${property.estimated_value.toLocaleString()}
-                      </p>
-                    )}
-
-                    {/* Score Factors */}
-                    {property.score_factors && property.score_factors.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-gray-100">
-                        {property.score_factors.slice(0, 3).map((factor, i) => (
-                          <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                            {factor}
-                          </span>
-                        ))}
-                        {property.score_factors.length > 3 && (
-                          <span className="px-2 py-0.5 text-gray-400 text-xs">
-                            +{property.score_factors.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Updated time */}
-                    <p className="text-xs text-gray-400 mt-3">
-                      Updated {formatDistanceToNow(property.updated_at)} ago
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
 
-          {/* Pagination */}
-          {data && data.total > 30 && (
-            <div className="px-6 py-3 border-t border-gray-200 bg-white flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Showing {(page - 1) * 30 + 1} to {Math.min(page * 30, data.total)} of {data.total}
-              </p>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setPage(p => p + 1)}
-                  disabled={page * 30 >= data.total}
-                  className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Next
-                </button>
-              </div>
+          {filteredProperties.length === 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+              <Home className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No properties match your filters</p>
             </div>
           )}
         </div>
-
-        {/* Property Detail Sidebar */}
-        {selectedProperty && (
-          <div className="fixed top-0 right-0 w-[400px] h-full bg-white border-l border-gray-200 shadow-xl overflow-y-auto">
-            <div className="p-6">
-              {/* Close button */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Property Details</h2>
-                <button
-                  onClick={() => setSelectedProperty(null)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Score */}
-              <div className="text-center mb-6">
-                <div className={`inline-flex items-center px-4 py-2 rounded-full text-lg font-semibold ${getScoreColor(selectedProperty.seller_score)}`}>
-                  Seller Score: {selectedProperty.seller_score}
-                </div>
-              </div>
-
-              {/* Address */}
-              <div className="mb-6">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Address
-                </label>
-                <p className="text-gray-900 font-medium">{selectedProperty.full_address}</p>
-              </div>
-
-              {/* Property Details */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                {selectedProperty.property_type && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                      Type
-                    </label>
-                    <p className="text-gray-900 capitalize">{selectedProperty.property_type}</p>
-                  </div>
-                )}
-                {selectedProperty.bedrooms && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                      Bedrooms
-                    </label>
-                    <p className="text-gray-900">{selectedProperty.bedrooms}</p>
-                  </div>
-                )}
-                {selectedProperty.bathrooms && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                      Bathrooms
-                    </label>
-                    <p className="text-gray-900">{selectedProperty.bathrooms}</p>
-                  </div>
-                )}
-                {selectedProperty.land_size && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                      Land Size
-                    </label>
-                    <p className="text-gray-900">{selectedProperty.land_size} m²</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Estimated Value */}
-              {selectedProperty.estimated_value && (
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                    Estimated Value
-                  </label>
-                  <p className="text-2xl font-bold text-gray-900">
-                    ${selectedProperty.estimated_value.toLocaleString()}
-                  </p>
-                </div>
-              )}
-
-              {/* Score Factors */}
-              {selectedProperty.score_factors && selectedProperty.score_factors.length > 0 && (
-                <div className="mb-6">
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                    Score Factors
-                  </label>
-                  <div className="space-y-2">
-                    {selectedProperty.score_factors.map((factor, i) => (
-                      <div key={i} className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-sm text-gray-700">{factor}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Notes */}
-              {selectedProperty.notes && (
-                <div className="mb-6">
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                    Notes
-                  </label>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedProperty.notes}</p>
-                </div>
-              )}
-
-              {/* Linked Leads */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  Linked Leads ({selectedProperty.linked_lead_ids.length})
-                </label>
-                {selectedProperty.linked_lead_ids.length === 0 ? (
-                  <p className="text-sm text-gray-500">No leads linked to this property</p>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedProperty.linked_lead_ids.map((leadId) => (
-                      <a
-                        key={leadId}
-                        href={`/leads?selected=${leadId}`}
-                        className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <span className="text-sm text-primary font-medium">View Lead →</span>
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </DemoLayout>
   );

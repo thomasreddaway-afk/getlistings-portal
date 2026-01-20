@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     // Generate mock data (replace with real data fetch later)
     const data = generateMockCompetitorAnalysis(
-      auth.user?.id || 'demo-user',
+      auth.user?.uid || 'demo-user',
       suburb,
       AVAILABLE_SUBURBS.slice(0, 3) // User's suburbs
     );
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     // For now, just return the mock data immediately
 
     const data = generateMockCompetitorAnalysis(
-      auth.user?.id || 'demo-user',
+      auth.user?.uid || 'demo-user',
       suburb,
       AVAILABLE_SUBURBS.slice(0, 3)
     );

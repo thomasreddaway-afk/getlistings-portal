@@ -116,7 +116,7 @@ export default function TalentPage() {
     return matchesSearch && matchesSuburb;
   });
 
-  const suburbs = ['All Suburbs', ...new Set(agents.map(a => a.suburb))];
+  const suburbs = ['All Suburbs', ...Array.from(new Set(agents.map(a => a.suburb)))];
 
   return (
     <DemoLayout currentPage="talent">
