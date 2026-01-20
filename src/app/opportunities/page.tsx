@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AppLayout } from '@/components/layout/AppLayout';
+import { DemoLayout } from '@/components/layout';
 import { PipelineKanban } from '@/components/pipeline/PipelineKanban';
 import { apiRequest } from '@/lib/api';
 import type { PipelineStage, Opportunity } from '@/types/entities';
@@ -53,7 +53,7 @@ export default function OpportunitiesPage() {
     : 0;
 
   return (
-    <AppLayout>
+    <DemoLayout currentPage="leads">
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 bg-white">
@@ -190,6 +190,6 @@ export default function OpportunitiesPage() {
           )}
         </div>
       </div>
-    </AppLayout>
+    </DemoLayout>
   );
 }

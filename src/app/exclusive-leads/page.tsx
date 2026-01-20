@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AppLayout } from '@/components/layout/AppLayout';
+import { DemoLayout } from '@/components/layout';
 import { LeadsTable } from '@/components/leads/LeadsTable';
 import { LeadProfile } from '@/components/leads/LeadProfile';
 import { getAllLeads, apiRequest } from '@/lib/api';
@@ -74,7 +74,7 @@ export default function ExclusiveLeadsPage() {
   };
 
   return (
-    <AppLayout>
+    <DemoLayout currentPage="exclusive">
       <div className="flex h-full">
         {/* Main content area */}
         <div className={`flex-1 flex flex-col transition-all duration-300 ${selectedLeadId ? 'mr-[500px]' : ''}`}>
@@ -231,6 +231,6 @@ export default function ExclusiveLeadsPage() {
           </div>
         )}
       </div>
-    </AppLayout>
+    </DemoLayout>
   );
 }

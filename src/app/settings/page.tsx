@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AppLayout } from '@/components/layout/AppLayout';
+import { DemoLayout } from '@/components/layout';
 import { apiRequest } from '@/lib/api';
 import type { PipelineStage, CallScript, SMSTemplate, EmailTemplate } from '@/types/config';
 
@@ -66,9 +66,9 @@ export default function SettingsPage() {
   ];
 
   return (
-    <AppLayout>
+    <DemoLayout currentPage="settings">
       <div className="flex h-full">
-        {/* Sidebar */}
+        {/* Settings Sidebar */}
         <div className="w-64 bg-white border-r border-gray-200 p-4">
           <h2 className="text-lg font-semibold text-gray-900 px-3 mb-4">Settings</h2>
           <nav className="space-y-1">
@@ -97,7 +97,7 @@ export default function SettingsPage() {
           {activeTab === 'email' && <EmailTemplatesSettings />}
         </div>
       </div>
-    </AppLayout>
+    </DemoLayout>
   );
 }
 

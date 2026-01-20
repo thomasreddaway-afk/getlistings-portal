@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AppLayout } from '@/components/layout/AppLayout';
+import { DemoLayout } from '@/components/layout';
 import { LeadsTable } from '@/components/leads/LeadsTable';
 import { LeadProfile } from '@/components/leads/LeadProfile';
 import { getAllLeads, apiRequest } from '@/lib/api';
 import type { Lead, Property } from '@/types/entities';
+import { Settings } from 'lucide-react';
 
 interface LeadsResponse {
   leads: Lead[];
@@ -80,88 +81,93 @@ export default function LeadsPage() {
   };
 
   return (
-    <AppLayout>
-      <div className="flex h-full">
-        {/* Main content area */}
-        <div className={`flex-1 flex flex-col transition-all duration-300 ${selectedLeadId ? 'mr-[500px]' : ''}`}>
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">All Leads</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {data?.total ?? 0} total leads
-                </p>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                {/* Search */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search leads..."
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
-                    className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                  />
-                  <svg
-                    className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-
-                {/* Source Filter */}
-                <select
-                  value={sourceFilter}
-                  onChange={(e) => {
-                    setSourceFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                >
-                  <option value="">All Sources</option>
-                  <option value="facebook_ad">Facebook Ads</option>
-                  <option value="website">Website</option>
-                  <option value="referral">Referral</option>
-                  <option value="cold_call">Cold Call</option>
-                  <option value="manual">Manual Entry</option>
-                </select>
-
-                {/* Stage Filter */}
-                <select
-                  value={stageFilter}
-                  onChange={(e) => {
-                    setStageFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                >
-                  <option value="">All Stages</option>
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="appointment_set">Appointment Set</option>
-                  <option value="appraisal_done">Appraisal Done</option>
-                  <option value="proposal_sent">Proposal Sent</option>
-                  <option value="listed">Listed</option>
-                  <option value="sold">Sold</option>
-                  <option value="lost">Lost</option>
-                </select>
-              </div>
+    <DemoLayout currentPage="leads">
+      <div className="flex h-full flex-col">
+        {/* Header - matching demo.html */}
+        <div className="bg-white border-b border-gray-200 px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Seller Scores</h1>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {data?.total ?? 0} properties in your subscribed suburbs
+              </p>
             </div>
           </div>
+        </div>
+
+        {/* Filter Row - matching demo.html */}
+        <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center space-x-2 overflow-x-auto">
+            <span className="text-xs text-gray-500 font-medium mr-1 flex-shrink-0">Filter:</span>
+            <button
+              onClick={() => { setSourceFilter(''); setStageFilter(''); setPage(1); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 ${
+                !sourceFilter && !stageFilter
+                  ? 'bg-red-500 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              All
+            </button>
+            
+            {/* Score Filters */}
+            <button className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-full hover:border-green-300 hover:bg-green-50 hover:text-green-700 flex-shrink-0">
+              75%+
+            </button>
+            <button className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-full hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 flex-shrink-0">
+              50-75%
+            </button>
+            <button className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-full hover:border-gray-400 hover:bg-gray-100 hover:text-gray-700 flex-shrink-0">
+              10-50%
+            </button>
+            
+            <div className="w-px h-5 bg-gray-300 mx-1 flex-shrink-0"></div>
+            
+            {/* Signal Filters */}
+            <button className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-full hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 flex-shrink-0">
+              Expiring
+            </button>
+            <button className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-full hover:border-green-300 hover:bg-green-50 hover:text-green-700 flex-shrink-0">
+              Listed
+            </button>
+            <button className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-full hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 flex-shrink-0">
+              Valuation
+            </button>
+            
+            {/* Spacer */}
+            <div className="flex-1"></div>
+            
+            {/* Search */}
+            <div className="relative flex-shrink-0">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-red-500 w-40 bg-white"
+              />
+              <svg
+                className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Main content area */}
+        <div className={`flex-1 flex flex-col overflow-hidden ${selectedLeadId ? 'mr-[500px]' : ''}`}>
 
           {/* Table */}
           <div className="flex-1 overflow-hidden">
@@ -192,22 +198,22 @@ export default function LeadsPage() {
 
           {/* Pagination */}
           {data && data.total > 50 && (
-            <div className="px-6 py-3 border-t border-gray-200 bg-white flex items-center justify-between">
+            <div className="bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-between">
               <p className="text-sm text-gray-500">
-                Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, data.total)} of {data.total}
+                Showing <span className="font-medium">{(page - 1) * 50 + 1}-{Math.min(page * 50, data.total)}</span> of <span className="font-medium">{data.total.toLocaleString()}</span> properties
               </p>
-              <div className="flex space-x-2">
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setPage(p => p + 1)}
                   disabled={page * 50 >= data.total}
-                  className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
                 >
                   Next
                 </button>
@@ -218,10 +224,10 @@ export default function LeadsPage() {
 
         {/* Lead Profile Sidebar */}
         {selectedLeadId && (
-          <div className="fixed top-0 right-0 w-[500px] h-full bg-white border-l border-gray-200 shadow-xl overflow-y-auto">
+          <div className="fixed top-0 right-0 w-[500px] h-full bg-white border-l border-gray-200 shadow-xl overflow-y-auto z-50">
             {isLoadingLead ? (
               <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
               </div>
             ) : selectedLeadData ? (
               <LeadProfile
@@ -234,6 +240,6 @@ export default function LeadsPage() {
           </div>
         )}
       </div>
-    </AppLayout>
+    </DemoLayout>
   );
 }

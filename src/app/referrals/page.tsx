@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/client';
 import { apiRequest } from '@/lib/api';
+import { DemoLayout } from '@/components/layout';
 
 interface ReferralStats {
   referralCode: string;
@@ -105,14 +106,17 @@ export default function ReferralPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
+      <DemoLayout currentPage="settings">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+        </div>
+      </DemoLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <DemoLayout currentPage="settings">
+      <div className="flex-1 overflow-auto">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
         <div className="max-w-4xl mx-auto px-4 py-16 text-center">
@@ -336,6 +340,7 @@ export default function ReferralPage() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </DemoLayout>
   );
 }

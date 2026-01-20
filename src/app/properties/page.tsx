@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AppLayout } from '@/components/layout/AppLayout';
+import { DemoLayout } from '@/components/layout';
 import { getAllLeads } from '@/lib/api';
 import type { Property, Lead } from '@/types/entities';
 import { formatDistanceToNow } from 'date-fns';
@@ -72,7 +72,7 @@ export default function PropertiesPage() {
   });
 
   return (
-    <AppLayout>
+    <DemoLayout currentPage="properties">
       <div className="flex h-full">
         {/* Main content */}
         <div className={`flex-1 flex flex-col transition-all duration-300 ${selectedProperty ? 'mr-[400px]' : ''}`}>
@@ -394,6 +394,6 @@ export default function PropertiesPage() {
           </div>
         )}
       </div>
-    </AppLayout>
+    </DemoLayout>
   );
 }
