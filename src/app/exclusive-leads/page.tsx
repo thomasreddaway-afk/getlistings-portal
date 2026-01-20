@@ -5,13 +5,14 @@ import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LeadsTable } from '@/components/leads/LeadsTable';
 import { LeadProfile } from '@/components/leads/LeadProfile';
+import { getAllLeads, apiRequest } from '@/lib/api';
 import type { Lead, Property } from '@/types/entities';
 
 interface LeadsResponse {
   leads: Lead[];
   total: number;
   page: number;
-  limit: number;
+  perPage: number;
 }
 
 async function fetchExclusiveLeads(params: {
@@ -19,23 +20,25 @@ async function fetchExclusiveLeads(params: {
   limit: number;
   search?: string;
 }): Promise<LeadsResponse> {
-  const searchParams = new URLSearchParams({
-    page: params.page.toString(),
-    limit: params.limit.toString(),
-    exclusive: 'true',
+  // Use MongoDB API directly for exclusive leads
+  const response = await getAllLeads({
+    page: params.page,
+    perPage: params.limit,
+    search: params.search,
+    // Filter for exclusive leads - high selling score
+    sellingScore: { min: 85, max: 100 },
   });
   
-  if (params.search) searchParams.set('search', params.search);
-
-  const response = await fetch(`/api/leads?${searchParams}`);
-  if (!response.ok) throw new Error('Failed to fetch exclusive leads');
-  return response.json();
+  return {
+    leads: response.leads as Lead[],
+    total: response.total,
+    page: response.page,
+    perPage: response.perPage,
+  };
 }
 
 async function fetchLead(id: string): Promise<{ lead: Lead; property?: Property }> {
-  const response = await fetch(`/api/leads/${id}`);
-  if (!response.ok) throw new Error('Failed to fetch lead');
-  return response.json();
+  return apiRequest<{ lead: Lead; property?: Property }>(`/lead/${id}`, 'GET');
 }
 
 export default function ExclusiveLeadsPage() {

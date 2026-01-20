@@ -3,24 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { apiRequest } from '@/lib/api';
 import type { PipelineStage, CallScript, SMSTemplate, EmailTemplate } from '@/types/config';
 
 type SettingsTab = 'pipeline' | 'scripts' | 'sms' | 'email';
 
 async function fetchConfig<T>(type: string): Promise<T> {
-  const response = await fetch(`/api/config/${type}`);
-  if (!response.ok) throw new Error(`Failed to fetch ${type}`);
-  return response.json();
+  // Use MongoDB API directly for config
+  try {
+    return await apiRequest<T>(`/config/${type}`, 'GET');
+  } catch {
+    // Return empty array if endpoint doesn't exist yet
+    return [] as unknown as T;
+  }
 }
 
 async function updateConfig<T>(type: string, data: T): Promise<T> {
-  const response = await fetch(`/api/config/${type}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) throw new Error(`Failed to update ${type}`);
-  return response.json();
+  return apiRequest<T>(`/config/${type}`, 'PUT', data);
 }
 
 export default function SettingsPage() {

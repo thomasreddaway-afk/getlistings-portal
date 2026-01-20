@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { getAllLeads } from '@/lib/api';
 import type { Property, Lead } from '@/types/entities';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -10,7 +11,7 @@ interface PropertiesResponse {
   properties: Property[];
   total: number;
   page: number;
-  limit: number;
+  perPage: number;
 }
 
 async function fetchProperties(params: {
@@ -19,17 +20,25 @@ async function fetchProperties(params: {
   search?: string;
   minScore?: number;
 }): Promise<PropertiesResponse> {
-  const searchParams = new URLSearchParams({
-    page: params.page.toString(),
-    limit: params.limit.toString(),
+  // Use MongoDB API - properties are part of leads data
+  const response = await getAllLeads({
+    page: params.page,
+    perPage: params.limit,
+    search: params.search,
+    sellingScore: params.minScore ? { min: params.minScore, max: 100 } : undefined,
   });
   
-  if (params.search) searchParams.set('search', params.search);
-  if (params.minScore) searchParams.set('minScore', params.minScore.toString());
-
-  const response = await fetch(`/api/properties?${searchParams}`);
-  if (!response.ok) throw new Error('Failed to fetch properties');
-  return response.json();
+  // Transform leads to properties format
+  const properties = (response.leads as Array<{ property?: Property }>)
+    .map(lead => lead.property)
+    .filter((p): p is Property => !!p);
+  
+  return {
+    properties,
+    total: response.total,
+    page: response.page,
+    perPage: response.perPage,
+  };
 }
 
 function getScoreColor(score: number): string {

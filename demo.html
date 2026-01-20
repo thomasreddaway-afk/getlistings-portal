@@ -394,6 +394,12 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
             <span>Leaderboard</span>
           </button>
+          
+          <button onclick="showPage('competitor-analysis')" id="nav-competitor-analysis" class="sidebar-item w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 relative">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            <span>Competitor Analysis</span>
+            <span class="absolute right-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">New</span>
+          </button>
         </div>
         
         <!-- Growth Section -->
@@ -3461,6 +3467,179 @@
         </div>
       </div>
       
+      <!-- COMPETITOR ANALYSIS PAGE -->
+      <div id="page-competitor-analysis" class="page flex-1 overflow-auto hidden bg-gray-50">
+        <div class="bg-white border-b border-gray-200 px-4 py-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900">Competitor Analysis</h1>
+              <p class="text-sm text-gray-500 mt-0.5">See where you rank and how to beat your competitors in each suburb</p>
+            </div>
+            <div class="flex items-center space-x-3">
+              <select id="ca-suburb-select" onchange="loadCompetitorAnalysis()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                <option value="">Select a suburb...</option>
+              </select>
+              <button onclick="generateCompetitorAnalysis()" id="ca-generate-btn" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>Generate Analysis</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="ca-empty-state" class="p-8 text-center">
+          <div class="max-w-md mx-auto">
+            <div class="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Analyze Your Competition</h3>
+            <p class="text-gray-500 mb-6">Select a suburb from your subscriptions to see how you rank against other agents. Get actionable insights to improve your position.</p>
+            <button onclick="generateCompetitorAnalysis()" class="inline-flex items-center px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-red-700 transition-colors">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              Generate First Analysis
+            </button>
+          </div>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="ca-loading-state" class="p-8 text-center hidden">
+          <div class="max-w-md mx-auto">
+            <div class="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <svg class="w-10 h-10 text-emerald-600 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Analyzing Competition...</h3>
+            <p class="text-gray-500">Our AI is analyzing agent performance data for your selected suburbs. This usually takes 10-15 seconds.</p>
+          </div>
+        </div>
+        
+        <!-- Results -->
+        <div id="ca-results" class="p-4 hidden">
+          <!-- Local Authority Score Card -->
+          <div class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-6 text-white mb-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-emerald-100 text-sm font-medium">Your Local Authority Score</p>
+                <div class="flex items-baseline mt-1">
+                  <span id="ca-authority-score" class="text-5xl font-bold">72</span>
+                  <span class="text-2xl text-emerald-200 ml-1">/100</span>
+                </div>
+                <p class="text-emerald-100 mt-2" id="ca-suburb-name">Ashgrove, QLD</p>
+              </div>
+              <div class="text-right">
+                <div class="flex items-center space-x-2 mb-2">
+                  <span class="text-emerald-100 text-sm">Suburb Rank:</span>
+                  <span id="ca-suburb-rank" class="text-2xl font-bold">#3</span>
+                </div>
+                <p class="text-emerald-200 text-sm" id="ca-rank-change">↑ Up 2 spots this month</p>
+              </div>
+            </div>
+            <div class="mt-4 bg-white/20 rounded-full h-2">
+              <div id="ca-score-bar" class="bg-white rounded-full h-2 transition-all duration-500" style="width: 72%"></div>
+            </div>
+          </div>
+          
+          <!-- Suburb Leaderboard -->
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+            <div class="p-4 border-b border-gray-200">
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">Suburb Leaderboard</h3>
+                <span class="text-sm text-gray-500" id="ca-leaderboard-subtitle">Top agents in Ashgrove</span>
+              </div>
+            </div>
+            <div id="ca-leaderboard-body" class="divide-y divide-gray-100">
+              <!-- Leaderboard rows will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Pillar Breakdown -->
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="font-semibold text-gray-900">Score Breakdown by Pillar</h3>
+              <p class="text-sm text-gray-500 mt-1">See where you're strong and where to improve</p>
+            </div>
+            <div id="ca-pillars" class="p-4 grid grid-cols-2 gap-4">
+              <!-- Pillar cards will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Two Column Layout -->
+          <div class="grid grid-cols-2 gap-6 mb-6">
+            <!-- Fastest Movers -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div class="p-4 border-b border-gray-200">
+                <div class="flex items-center space-x-2">
+                  <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                  </div>
+                  <h3 class="font-semibold text-gray-900">Fastest Movers</h3>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">Agents gaining ground quickly</p>
+              </div>
+              <div id="ca-fastest-movers" class="p-4 space-y-3">
+                <!-- Fastest movers will be inserted here -->
+              </div>
+            </div>
+            
+            <!-- Action Items -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div class="p-4 border-b border-gray-200">
+                <div class="flex items-center space-x-2">
+                  <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                  </div>
+                  <h3 class="font-semibold text-gray-900">Priority Actions</h3>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">Top things to do this week</p>
+              </div>
+              <div id="ca-action-items" class="p-4 space-y-2">
+                <!-- Action items will be inserted here -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- 7-Day Domination Plan -->
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+            <div class="p-4 border-b border-gray-200">
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <h3 class="font-semibold text-gray-900">Your 7-Day Domination Plan</h3>
+              </div>
+              <p class="text-sm text-gray-500 mt-1">Daily tasks to climb the leaderboard</p>
+            </div>
+            <div id="ca-7day-plan" class="p-4">
+              <div class="grid grid-cols-7 gap-2">
+                <!-- 7 day cards will be inserted here -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- Content Ideas -->
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div class="p-4 border-b border-gray-200">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                  </div>
+                  <h3 class="font-semibold text-gray-900">Content Ideas for This Suburb</h3>
+                </div>
+                <button onclick="regenerateContentIdeas()" class="text-sm text-primary hover:underline flex items-center">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  Regenerate Ideas
+                </button>
+              </div>
+              <p class="text-sm text-gray-500 mt-1">AI-generated content to boost your local authority</p>
+            </div>
+            <div id="ca-content-ideas" class="p-4 grid grid-cols-3 gap-4">
+              <!-- Content idea cards will be inserted here -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <!-- SETTINGS PAGE -->
       <div id="page-settings" class="page flex-1 overflow-auto hidden bg-gray-50">
         <div class="bg-white border-b border-gray-200 px-4 py-4">
@@ -6445,6 +6624,30 @@
           <pre id="api-test-output" class="bg-gray-900 text-green-400 p-4 rounded-lg text-xs overflow-auto max-h-64 font-mono"></pre>
         </div>
       </div>
+      
+      <!-- Subscription Management Section -->
+      <div class="bg-white rounded-xl border border-gray-200 p-6 mt-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-semibold text-gray-900">Subscription</h3>
+            <p class="text-sm text-gray-500">Manage your Get Listings subscription</p>
+          </div>
+          <div class="flex items-center space-x-2" id="subscription-status-badge">
+            <span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">Not subscribed</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <button onclick="showSubscriptionModal()" class="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/25">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            <span>New Subscription</span>
+          </button>
+          <button onclick="openStripeBillingPortal()" class="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span>Manage Billing</span>
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-3 text-center">Secure payments powered by Stripe</p>
+      </div>
     </div>
   </div>
   
@@ -7346,6 +7549,165 @@
     </div>
   </div>
   
+  <!-- Stripe Subscription Modal -->
+  <div id="subscription-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="flex items-center justify-between p-5 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Choose Your Plan</h2>
+          <p class="text-sm text-gray-600 mt-1">Unlock up to 12 suburbs with your web subscription</p>
+        </div>
+        <button onclick="hideSubscriptionModal()" class="p-2 hover:bg-white/80 rounded-lg transition-colors">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      
+      <!-- Plans -->
+      <div class="flex-1 overflow-auto p-6">
+        <!-- Selected suburbs display -->
+        <div id="subscription-selected-suburbs" class="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200 hidden">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold text-gray-900">Selected Suburbs</h4>
+            <span class="text-sm text-gray-500" id="subscription-suburb-count">0/12 suburbs</span>
+          </div>
+          <div class="flex flex-wrap gap-2" id="subscription-suburbs-chips">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+        
+        <!-- Plan Cards -->
+        <div class="grid md:grid-cols-3 gap-5">
+          <!-- Monthly Plan -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-shadow cursor-pointer" onclick="selectSubscriptionPlan('monthly')">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-bold text-gray-900">Monthly</h4>
+              <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center" id="plan-radio-monthly">
+                <div class="w-2.5 h-2.5 rounded-full bg-amber-500 hidden"></div>
+              </div>
+            </div>
+            <div class="mb-4">
+              <span class="text-4xl font-bold text-gray-900">$99</span>
+              <span class="text-gray-500">/month</span>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600 mb-4">
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Up to 12 suburbs</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Full lead access</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Cancel anytime</span>
+              </li>
+            </ul>
+            <div class="text-xs text-gray-400">Billed monthly</div>
+          </div>
+          
+          <!-- 6-Month Plan (Best Value) -->
+          <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border-2 border-amber-400 p-5 hover:shadow-lg transition-shadow relative cursor-pointer" onclick="selectSubscriptionPlan('biannual')">
+            <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+              <span class="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg">BEST VALUE</span>
+            </div>
+            <div class="flex items-center justify-between mb-3 mt-2">
+              <h4 class="font-bold text-gray-900">6 Months</h4>
+              <div class="w-5 h-5 rounded-full border-2 border-amber-400 flex items-center justify-center" id="plan-radio-biannual">
+                <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+              </div>
+            </div>
+            <div class="mb-4">
+              <span class="text-4xl font-bold text-gray-900">$499</span>
+              <span class="text-gray-500">/6 months</span>
+              <div class="text-sm text-green-600 font-medium mt-1">Save $95 (16%)</div>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600 mb-4">
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Up to 12 suburbs</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Full lead access</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Priority support</span>
+              </li>
+            </ul>
+            <div class="text-xs text-gray-400">Billed every 6 months</div>
+          </div>
+          
+          <!-- Annual Plan -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-shadow cursor-pointer" onclick="selectSubscriptionPlan('annual')">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-bold text-gray-900">Annual</h4>
+              <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center" id="plan-radio-annual">
+                <div class="w-2.5 h-2.5 rounded-full bg-amber-500 hidden"></div>
+              </div>
+            </div>
+            <div class="mb-4">
+              <span class="text-4xl font-bold text-gray-900">$849</span>
+              <span class="text-gray-500">/year</span>
+              <div class="text-sm text-green-600 font-medium mt-1">Save $339 (29%)</div>
+            </div>
+            <ul class="space-y-2 text-sm text-gray-600 mb-4">
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Up to 12 suburbs</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Full lead access</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Priority support</span>
+              </li>
+              <li class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>Exclusive insights</span>
+              </li>
+            </ul>
+            <div class="text-xs text-gray-400">Billed annually</div>
+          </div>
+        </div>
+        
+        <!-- Trust indicators -->
+        <div class="mt-6 flex items-center justify-center space-x-6 text-sm text-gray-500">
+          <div class="flex items-center space-x-1">
+            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+            <span>Secure payment via Stripe</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            <span>Cancel anytime</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
+            <span>30-day money back</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="p-5 border-t border-gray-200 bg-gray-50">
+        <div class="flex items-center justify-between">
+          <div id="subscription-plan-summary">
+            <p class="text-sm text-gray-500">Selected plan</p>
+            <p class="text-lg font-bold text-gray-900">6 Months - $499</p>
+          </div>
+          <button onclick="proceedToStripeCheckout()" class="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/25 flex items-center space-x-2">
+            <span>Continue to Payment</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <!-- Filter Modal -->
   <div id="filter-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end justify-center">
     <div class="bg-white rounded-t-3xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col animate-slide-up">
@@ -7801,6 +8163,294 @@
     
     // ===== PROP.DEALS API INTEGRATION =====
     const API_BASE_URL = 'https://prop.deals/v1';
+    
+    // ===== STRIPE CONFIGURATION =====
+    const STRIPE_PRICES = {
+      monthly: 'price_1SrDyJGzISuv7OUtsNK11ZSB',
+      biannual: 'price_1SrDyxGzISuv7OUtZIhafHmE',
+      annual: 'price_1SrDzLGzISuv7OUtHpSyd1iP'
+    };
+    
+    const STRIPE_API_URL = 'https://api.prop.deals/v1'; // Stripe endpoints on main API (includes /v1 prefix)
+    
+    // ===== STRIPE CHECKOUT FUNCTIONS =====
+    
+    /**
+     * Start Stripe checkout for a subscription plan
+     * @param {string} planType - 'monthly', 'biannual', or 'annual'
+     * @param {string[]} selectedSuburbs - Array of suburb names to subscribe to
+     */
+    async function startStripeCheckout(planType, selectedSuburbs = []) {
+      const token = getApiToken();
+      if (!token) {
+        showToast('❌ Please log in first');
+        showSettingsDetail('api');
+        return;
+      }
+      
+      if (!selectedSuburbs.length) {
+        showToast('❌ Please select at least one suburb');
+        return;
+      }
+      
+      if (selectedSuburbs.length > 12) {
+        showToast('❌ Maximum 12 suburbs allowed');
+        return;
+      }
+      
+      const priceId = STRIPE_PRICES[planType];
+      if (!priceId) {
+        showToast('❌ Invalid plan type');
+        return;
+      }
+      
+      try {
+        showToast('⏳ Preparing checkout...');
+        
+        const response = await fetch(`${STRIPE_API_URL}/stripe/create-checkout-session`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-access-token': token
+          },
+          body: JSON.stringify({
+            priceId,
+            subscribedSuburbs: selectedSuburbs,
+            successUrl: window.location.origin + window.location.pathname + '?payment=success',
+            cancelUrl: window.location.origin + window.location.pathname + '?payment=cancelled'
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to create checkout session');
+        }
+        
+        const data = await response.json();
+        
+        if (data.url) {
+          // Redirect to Stripe Checkout
+          window.location.href = data.url;
+        } else {
+          throw new Error('No checkout URL returned');
+        }
+      } catch (error) {
+        console.error('Stripe checkout error:', error);
+        showToast('❌ ' + error.message);
+      }
+    }
+    
+    /**
+     * Update user's subscribed suburbs (for existing subscribers)
+     * @param {string[]} suburbs - Array of suburb names
+     */
+    async function updateStripeSuburbs(suburbs) {
+      const token = getApiToken();
+      if (!token) {
+        showToast('❌ Please log in first');
+        return false;
+      }
+      
+      try {
+        const response = await fetch(`${STRIPE_API_URL}/stripe/update-suburbs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-access-token': token
+          },
+          body: JSON.stringify({ subscribedSuburbs: suburbs })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to update suburbs');
+        }
+        
+        const data = await response.json();
+        clearSuburbsCache(); // Clear cache to refresh
+        showToast('✅ Suburbs updated successfully!');
+        return true;
+      } catch (error) {
+        console.error('Update suburbs error:', error);
+        showToast('❌ ' + error.message);
+        return false;
+      }
+    }
+    
+    /**
+     * Open Stripe billing portal for subscription management
+     */
+    async function openStripeBillingPortal() {
+      const token = getApiToken();
+      if (!token) {
+        showToast('❌ Please log in first');
+        showSettingsDetail('api');
+        return;
+      }
+      
+      try {
+        showToast('⏳ Opening billing portal...');
+        
+        const response = await fetch(`${STRIPE_API_URL}/stripe/create-portal-session`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-access-token': token
+          },
+          body: JSON.stringify({
+            returnUrl: window.location.href
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to open billing portal');
+        }
+        
+        const data = await response.json();
+        
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error('No portal URL returned');
+        }
+      } catch (error) {
+        console.error('Billing portal error:', error);
+        showToast('❌ ' + error.message);
+      }
+    }
+    
+    /**
+     * Check for payment success/cancel from Stripe redirect
+     */
+    function checkStripePaymentStatus() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentStatus = urlParams.get('payment');
+      
+      if (paymentStatus === 'success') {
+        showToast('🎉 Payment successful! Your subscription is now active.');
+        clearSuburbsCache();
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        // Refresh user data
+        setTimeout(() => {
+          getSubscribedSuburbs();
+        }, 1000);
+      } else if (paymentStatus === 'cancelled') {
+        showToast('ℹ️ Payment cancelled. No charges were made.');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+    
+    // ===== SUBSCRIPTION MODAL =====
+    let selectedPlan = 'biannual'; // Default to best value
+    let subscriptionSuburbs = new Set();
+    
+    const PLAN_DETAILS = {
+      monthly: { name: 'Monthly', price: '$99/month', summary: 'Monthly - $99' },
+      biannual: { name: '6 Months', price: '$499/6 months', summary: '6 Months - $499' },
+      annual: { name: 'Annual', price: '$849/year', summary: 'Annual - $849' }
+    };
+    
+    function showSubscriptionModal(preselectedSuburbs = []) {
+      // Pre-populate suburbs if provided
+      subscriptionSuburbs = new Set(preselectedSuburbs);
+      selectedPlan = 'biannual'; // Reset to default
+      
+      updateSubscriptionModal();
+      document.getElementById('subscription-modal').classList.remove('hidden');
+    }
+    
+    function hideSubscriptionModal() {
+      document.getElementById('subscription-modal').classList.add('hidden');
+    }
+    
+    function selectSubscriptionPlan(plan) {
+      selectedPlan = plan;
+      
+      // Update radio button visuals
+      ['monthly', 'biannual', 'annual'].forEach(p => {
+        const radio = document.getElementById(`plan-radio-${p}`);
+        const dot = radio.querySelector('div');
+        const parent = radio.closest('div[onclick]');
+        
+        if (p === plan) {
+          radio.classList.remove('border-gray-300');
+          radio.classList.add('border-amber-400');
+          dot.classList.remove('hidden');
+          if (p !== 'biannual') {
+            parent.classList.add('border-amber-300', 'bg-amber-50/50');
+            parent.classList.remove('border-gray-200');
+          }
+        } else {
+          radio.classList.add('border-gray-300');
+          radio.classList.remove('border-amber-400');
+          dot.classList.add('hidden');
+          if (p !== 'biannual') {
+            parent.classList.remove('border-amber-300', 'bg-amber-50/50');
+            parent.classList.add('border-gray-200');
+          }
+        }
+      });
+      
+      // Update summary
+      const summaryEl = document.getElementById('subscription-plan-summary');
+      summaryEl.innerHTML = `
+        <p class="text-sm text-gray-500">Selected plan</p>
+        <p class="text-lg font-bold text-gray-900">${PLAN_DETAILS[plan].summary}</p>
+      `;
+    }
+    
+    function updateSubscriptionModal() {
+      // Update suburbs display
+      const suburbsContainer = document.getElementById('subscription-selected-suburbs');
+      const chipsContainer = document.getElementById('subscription-suburbs-chips');
+      const countEl = document.getElementById('subscription-suburb-count');
+      
+      if (subscriptionSuburbs.size > 0) {
+        suburbsContainer.classList.remove('hidden');
+        countEl.textContent = `${subscriptionSuburbs.size}/12 suburbs`;
+        chipsContainer.innerHTML = Array.from(subscriptionSuburbs).map(suburb => `
+          <span class="inline-flex items-center px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-sm font-medium">
+            ${suburb}
+            <button onclick="removeSubscriptionSuburb('${suburb}')" class="ml-2 text-amber-500 hover:text-amber-700">×</button>
+          </span>
+        `).join('');
+      } else {
+        suburbsContainer.classList.add('hidden');
+      }
+      
+      // Update plan selection visual
+      selectSubscriptionPlan(selectedPlan);
+    }
+    
+    function removeSubscriptionSuburb(suburb) {
+      subscriptionSuburbs.delete(suburb);
+      updateSubscriptionModal();
+    }
+    
+    function addSubscriptionSuburb(suburb) {
+      if (subscriptionSuburbs.size >= 12) {
+        showToast('❌ Maximum 12 suburbs allowed');
+        return;
+      }
+      subscriptionSuburbs.add(suburb);
+      updateSubscriptionModal();
+    }
+    
+    function proceedToStripeCheckout() {
+      if (subscriptionSuburbs.size === 0) {
+        showToast('⚠️ Please select at least one suburb first');
+        return;
+      }
+      
+      hideSubscriptionModal();
+      startStripeCheckout(selectedPlan, Array.from(subscriptionSuburbs));
+    }
     
     // Get stored JWT token
     function getApiToken() {
@@ -9035,6 +9685,383 @@
         console.error('Failed to get user rank:', e);
       }
     }
+
+    // ============================================
+    // COMPETITOR ANALYSIS FUNCTIONS
+    // ============================================
+    
+    let competitorAnalysisData = null;
+    let caSelectedSuburb = null;
+    
+    // Mock data for competitor analysis
+    const mockCompetitorData = {
+      suburbs: ['Ashgrove', 'Paddington', 'Bardon', 'The Gap', 'Red Hill', 'Kelvin Grove', 'Auchenflower', 'Toowong', 'Indooroopilly', 'Taringa']
+    };
+    
+    // Initialize competitor analysis page
+    function initCompetitorAnalysis() {
+      // Populate suburb dropdown from user's subscribed suburbs
+      const suburbSelect = document.getElementById('ca-suburb-select');
+      if (suburbSelect && suburbSelect.options.length <= 1) {
+        mockCompetitorData.suburbs.forEach(suburb => {
+          const option = document.createElement('option');
+          option.value = suburb.toLowerCase().replace(/\s+/g, '-');
+          option.textContent = suburb;
+          suburbSelect.appendChild(option);
+        });
+      }
+    }
+    
+    // Load competitor analysis for selected suburb
+    function loadCompetitorAnalysis() {
+      const suburbSelect = document.getElementById('ca-suburb-select');
+      if (suburbSelect && suburbSelect.value) {
+        caSelectedSuburb = suburbSelect.options[suburbSelect.selectedIndex].text;
+        generateCompetitorAnalysis();
+      }
+    }
+    
+    // Generate competitor analysis (simulated AI analysis)
+    async function generateCompetitorAnalysis() {
+      const emptyState = document.getElementById('ca-empty-state');
+      const loadingState = document.getElementById('ca-loading-state');
+      const results = document.getElementById('ca-results');
+      
+      // If no suburb selected, use first one
+      if (!caSelectedSuburb) {
+        caSelectedSuburb = mockCompetitorData.suburbs[0];
+        const suburbSelect = document.getElementById('ca-suburb-select');
+        if (suburbSelect) suburbSelect.value = caSelectedSuburb.toLowerCase().replace(/\s+/g, '-');
+      }
+      
+      // Show loading
+      emptyState.classList.add('hidden');
+      results.classList.add('hidden');
+      loadingState.classList.remove('hidden');
+      
+      // Simulate AI analysis delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate mock data
+      competitorAnalysisData = generateMockCompetitorData(caSelectedSuburb);
+      
+      // Render results
+      renderCompetitorAnalysis();
+      
+      // Show results
+      loadingState.classList.add('hidden');
+      results.classList.remove('hidden');
+    }
+    
+    // Generate mock competitor data
+    function generateMockCompetitorData(suburb) {
+      const agents = [
+        { name: 'Sarah Chen', agency: 'Ray White', photo: 'https://randomuser.me/api/portraits/women/44.jpg', score: 89, change: 2 },
+        { name: 'Michael Torres', agency: 'McGrath', photo: 'https://randomuser.me/api/portraits/men/32.jpg', score: 85, change: -1 },
+        { name: 'Tom Reddaway', agency: 'McGrath', photo: null, score: 72, change: 3, isYou: true },
+        { name: 'Emma Wilson', agency: 'LJ Hooker', photo: 'https://randomuser.me/api/portraits/women/68.jpg', score: 68, change: 0 },
+        { name: 'James O\'Brien', agency: 'Place', photo: 'https://randomuser.me/api/portraits/men/52.jpg', score: 65, change: -2 },
+        { name: 'Lisa Park', agency: 'Harcourts', photo: 'https://randomuser.me/api/portraits/women/33.jpg', score: 61, change: 1 },
+        { name: 'David Kim', agency: 'Belle Property', photo: 'https://randomuser.me/api/portraits/men/45.jpg', score: 58, change: 0 },
+      ];
+      
+      const pillars = [
+        { name: 'Sales Volume', score: 78, maxScore: 100, icon: '💰', tip: 'Close 2 more deals to reach top tier', color: 'emerald' },
+        { name: 'Days on Market', score: 82, maxScore: 100, icon: '⏱️', tip: 'Your average of 28 days beats suburb average of 35', color: 'blue' },
+        { name: 'List to Sale Ratio', score: 65, maxScore: 100, icon: '📊', tip: 'Improve by 5% to match leader', color: 'amber' },
+        { name: 'Online Presence', score: 45, maxScore: 100, icon: '🌐', tip: 'Post 3x more suburb content on socials', color: 'red' },
+        { name: 'Reviews & Ratings', score: 88, maxScore: 100, icon: '⭐', tip: 'Excellent! Keep asking for reviews', color: 'purple' },
+        { name: 'Market Activity', score: 70, maxScore: 100, icon: '📈', tip: 'Increase appraisal bookings by 20%', color: 'cyan' },
+      ];
+      
+      const fastestMovers = [
+        { name: 'Lisa Park', change: '+12', reason: '3 new listings this week', photo: 'https://randomuser.me/api/portraits/women/33.jpg' },
+        { name: 'David Kim', change: '+8', reason: 'Strong social media push', photo: 'https://randomuser.me/api/portraits/men/45.jpg' },
+        { name: 'Tom Reddaway', change: '+3', reason: 'Consistent local content', photo: null, isYou: true },
+      ];
+      
+      const actionItems = [
+        { priority: 'high', text: 'Book 2 appraisals in ' + suburb + ' this week', impact: '+5 score points' },
+        { priority: 'high', text: 'Post 3 suburb-specific social posts', impact: '+8 score points' },
+        { priority: 'medium', text: 'Ask last 3 buyers for Google reviews', impact: '+3 score points' },
+        { priority: 'medium', text: 'Update your REA bio with ' + suburb + ' stats', impact: '+2 score points' },
+        { priority: 'low', text: 'Sponsor local school newsletter', impact: 'Brand awareness' },
+      ];
+      
+      const dailyPlan = [
+        { day: 'Mon', task: 'Door knock 10 homes near recent sale', done: false },
+        { day: 'Tue', task: 'Post market update video', done: false },
+        { day: 'Wed', task: 'Call 5 past appraisals for follow-up', done: false },
+        { day: 'Thu', task: 'Host open home + collect leads', done: false },
+        { day: 'Fri', task: 'Send suburb newsletter to database', done: false },
+        { day: 'Sat', task: 'Open homes - 2 inspections minimum', done: false },
+        { day: 'Sun', task: 'Review analytics & plan next week', done: false },
+      ];
+      
+      const contentIdeas = [
+        { type: 'video', title: suburb + ' Market Update - January 2026', description: 'Cover recent sales, price trends, and what to expect', engagement: 'High' },
+        { type: 'post', title: '5 Hidden Gems in ' + suburb, description: 'Best cafes, parks, and schools locals love', engagement: 'Very High' },
+        { type: 'story', title: 'Just Listed: [Address] Virtual Tour', description: 'Quick walkthrough with key features', engagement: 'Medium' },
+        { type: 'article', title: 'Is Now the Right Time to Sell in ' + suburb + '?', description: 'Data-driven analysis for sellers', engagement: 'High' },
+        { type: 'reel', title: suburb + ' in 60 Seconds', description: 'Fast-paced tour of the suburb highlights', engagement: 'Very High' },
+        { type: 'post', title: 'Sold Above Asking! [Case Study]', description: 'How we achieved $X above reserve', engagement: 'High' },
+      ];
+      
+      return {
+        suburb,
+        authorityScore: 72,
+        rank: 3,
+        totalAgents: agents.length,
+        rankChange: 2,
+        leaderboard: agents,
+        pillars,
+        fastestMovers,
+        actionItems,
+        dailyPlan,
+        contentIdeas
+      };
+    }
+    
+    // Render competitor analysis results
+    function renderCompetitorAnalysis() {
+      const data = competitorAnalysisData;
+      if (!data) return;
+      
+      // Update header stats
+      document.getElementById('ca-authority-score').textContent = data.authorityScore;
+      document.getElementById('ca-score-bar').style.width = data.authorityScore + '%';
+      document.getElementById('ca-suburb-name').textContent = data.suburb + ', QLD';
+      document.getElementById('ca-suburb-rank').textContent = '#' + data.rank;
+      document.getElementById('ca-rank-change').textContent = data.rankChange >= 0 ? 
+        '↑ Up ' + data.rankChange + ' spots this month' : 
+        '↓ Down ' + Math.abs(data.rankChange) + ' spots this month';
+      document.getElementById('ca-leaderboard-subtitle').textContent = 'Top agents in ' + data.suburb;
+      
+      // Render leaderboard
+      const leaderboardBody = document.getElementById('ca-leaderboard-body');
+      leaderboardBody.innerHTML = data.leaderboard.map((agent, index) => {
+        const photo = agent.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(agent.name)}&background=random`;
+        const rankBg = index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-gray-300 text-white' : index === 2 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600';
+        const rowBg = agent.isYou ? 'bg-amber-50 border-l-4 border-amber-400' : '';
+        const changeColor = agent.change > 0 ? 'text-green-600' : agent.change < 0 ? 'text-red-600' : 'text-gray-400';
+        const changeIcon = agent.change > 0 ? '↑' : agent.change < 0 ? '↓' : '–';
+        
+        return `
+          <div class="px-4 py-3 flex items-center justify-between ${rowBg} hover:bg-gray-50 transition-colors">
+            <div class="flex items-center space-x-3">
+              <span class="w-8 h-8 ${rankBg} rounded-full flex items-center justify-center text-sm font-bold">${index + 1}</span>
+              <img src="${photo}" alt="${agent.name}" class="w-10 h-10 rounded-full object-cover">
+              <div>
+                <p class="font-medium text-gray-900">${agent.name} ${agent.isYou ? '<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full ml-1">You</span>' : ''}</p>
+                <p class="text-xs text-gray-500">${agent.agency}</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-4">
+              <span class="${changeColor} text-sm font-medium">${changeIcon}${Math.abs(agent.change)}</span>
+              <div class="text-right">
+                <p class="font-bold text-gray-900">${agent.score}</p>
+                <p class="text-xs text-gray-500">score</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Render pillars
+      const pillarsContainer = document.getElementById('ca-pillars');
+      pillarsContainer.innerHTML = data.pillars.map(pillar => {
+        const colorClasses = {
+          emerald: 'bg-emerald-100 text-emerald-600',
+          blue: 'bg-blue-100 text-blue-600',
+          amber: 'bg-amber-100 text-amber-600',
+          red: 'bg-red-100 text-red-600',
+          purple: 'bg-purple-100 text-purple-600',
+          cyan: 'bg-cyan-100 text-cyan-600'
+        };
+        const barColor = {
+          emerald: 'bg-emerald-500',
+          blue: 'bg-blue-500',
+          amber: 'bg-amber-500',
+          red: 'bg-red-500',
+          purple: 'bg-purple-500',
+          cyan: 'bg-cyan-500'
+        };
+        
+        return `
+          <div class="border border-gray-200 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center space-x-2">
+                <span class="text-xl">${pillar.icon}</span>
+                <span class="font-medium text-gray-900">${pillar.name}</span>
+              </div>
+              <span class="text-lg font-bold text-gray-900">${pillar.score}</span>
+            </div>
+            <div class="bg-gray-200 rounded-full h-2 mb-2">
+              <div class="${barColor[pillar.color]} rounded-full h-2 transition-all" style="width: ${pillar.score}%"></div>
+            </div>
+            <p class="text-xs text-gray-500">${pillar.tip}</p>
+          </div>
+        `;
+      }).join('');
+      
+      // Render fastest movers
+      const fastestMoversContainer = document.getElementById('ca-fastest-movers');
+      fastestMoversContainer.innerHTML = data.fastestMovers.map(mover => {
+        const photo = mover.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(mover.name)}&background=random`;
+        const rowBg = mover.isYou ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50';
+        
+        return `
+          <div class="${rowBg} rounded-lg p-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <img src="${photo}" alt="${mover.name}" class="w-8 h-8 rounded-full object-cover">
+              <div>
+                <p class="font-medium text-gray-900 text-sm">${mover.name}${mover.isYou ? ' <span class="text-xs text-amber-600">(You)</span>' : ''}</p>
+                <p class="text-xs text-gray-500">${mover.reason}</p>
+              </div>
+            </div>
+            <span class="text-green-600 font-bold">${mover.change}</span>
+          </div>
+        `;
+      }).join('');
+      
+      // Render action items
+      const actionItemsContainer = document.getElementById('ca-action-items');
+      actionItemsContainer.innerHTML = data.actionItems.map(item => {
+        const priorityColors = {
+          high: 'bg-red-100 text-red-700',
+          medium: 'bg-amber-100 text-amber-700',
+          low: 'bg-blue-100 text-blue-700'
+        };
+        
+        return `
+          <div class="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg">
+            <span class="px-2 py-0.5 text-xs font-medium rounded ${priorityColors[item.priority]} uppercase">${item.priority}</span>
+            <div class="flex-1">
+              <p class="text-sm text-gray-900">${item.text}</p>
+              <p class="text-xs text-gray-500 mt-0.5">${item.impact}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Render 7-day plan
+      const planContainer = document.getElementById('ca-7day-plan');
+      planContainer.innerHTML = `
+        <div class="grid grid-cols-7 gap-2">
+          ${data.dailyPlan.map(day => `
+            <div class="border border-gray-200 rounded-lg p-3 text-center hover:border-primary hover:shadow-sm transition-all cursor-pointer" onclick="toggleDayTask(this)">
+              <p class="text-xs font-bold text-gray-400 uppercase mb-2">${day.day}</p>
+              <div class="w-8 h-8 mx-auto mb-2 rounded-full border-2 border-gray-200 flex items-center justify-center task-check">
+                <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              </div>
+              <p class="text-xs text-gray-600 line-clamp-2">${day.task}</p>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      
+      // Render content ideas
+      const contentIdeasContainer = document.getElementById('ca-content-ideas');
+      contentIdeasContainer.innerHTML = data.contentIdeas.map(idea => {
+        const typeIcons = {
+          video: '🎬',
+          post: '📝',
+          story: '📱',
+          article: '📰',
+          reel: '🎞️'
+        };
+        const engagementColors = {
+          'Very High': 'bg-green-100 text-green-700',
+          'High': 'bg-blue-100 text-blue-700',
+          'Medium': 'bg-amber-100 text-amber-700'
+        };
+        
+        return `
+          <div class="border border-gray-200 rounded-lg p-4 hover:border-primary hover:shadow-sm transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-2xl">${typeIcons[idea.type] || '📄'}</span>
+              <span class="px-2 py-0.5 text-xs font-medium rounded ${engagementColors[idea.engagement]}">${idea.engagement}</span>
+            </div>
+            <h4 class="font-medium text-gray-900 text-sm mb-1 group-hover:text-primary">${idea.title}</h4>
+            <p class="text-xs text-gray-500">${idea.description}</p>
+            <button class="mt-3 text-xs text-primary font-medium hover:underline" onclick="event.stopPropagation(); copyContentIdea('${idea.title.replace(/'/g, "\\'")}')">Copy to clipboard</button>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Toggle day task completion
+    function toggleDayTask(element) {
+      const checkCircle = element.querySelector('.task-check');
+      const isCompleted = element.classList.contains('bg-green-50');
+      
+      if (isCompleted) {
+        element.classList.remove('bg-green-50', 'border-green-300');
+        element.classList.add('border-gray-200');
+        checkCircle.classList.remove('bg-green-500', 'border-green-500');
+        checkCircle.classList.add('border-gray-200');
+        checkCircle.querySelector('svg').classList.remove('text-white');
+        checkCircle.querySelector('svg').classList.add('text-gray-300');
+      } else {
+        element.classList.add('bg-green-50', 'border-green-300');
+        element.classList.remove('border-gray-200');
+        checkCircle.classList.add('bg-green-500', 'border-green-500');
+        checkCircle.classList.remove('border-gray-200');
+        checkCircle.querySelector('svg').classList.add('text-white');
+        checkCircle.querySelector('svg').classList.remove('text-gray-300');
+      }
+    }
+    
+    // Copy content idea to clipboard
+    function copyContentIdea(title) {
+      navigator.clipboard.writeText(title).then(() => {
+        showToast('Copied to clipboard!', 'success');
+      }).catch(() => {
+        showToast('Failed to copy', 'error');
+      });
+    }
+    
+    // Regenerate content ideas
+    function regenerateContentIdeas() {
+      if (!competitorAnalysisData) return;
+      
+      // Shuffle and regenerate content ideas
+      const newIdeas = [
+        { type: 'video', title: competitorAnalysisData.suburb + ' Neighbourhood Guide', description: 'Complete walkthrough for potential buyers', engagement: 'Very High' },
+        { type: 'reel', title: 'Price Check: What Does $1M Get You in ' + competitorAnalysisData.suburb + '?', description: 'Quick comparison of property values', engagement: 'Very High' },
+        { type: 'post', title: 'Just Sold: ' + competitorAnalysisData.suburb + ' Family Home', description: 'Success story with before/after', engagement: 'High' },
+        { type: 'article', title: competitorAnalysisData.suburb + ' vs ' + mockCompetitorData.suburbs[1] + ': Which is Right for You?', description: 'Suburb comparison for buyers', engagement: 'High' },
+        { type: 'story', title: 'Behind the Scenes: Auction Day', description: 'Real-time auction coverage', engagement: 'Medium' },
+        { type: 'post', title: 'Local Business Spotlight: ' + competitorAnalysisData.suburb, description: 'Feature a local cafe or shop', engagement: 'High' },
+      ];
+      
+      competitorAnalysisData.contentIdeas = newIdeas;
+      
+      // Re-render content ideas section
+      const contentIdeasContainer = document.getElementById('ca-content-ideas');
+      contentIdeasContainer.innerHTML = newIdeas.map(idea => {
+        const typeIcons = { video: '🎬', post: '📝', story: '📱', article: '📰', reel: '🎞️' };
+        const engagementColors = { 'Very High': 'bg-green-100 text-green-700', 'High': 'bg-blue-100 text-blue-700', 'Medium': 'bg-amber-100 text-amber-700' };
+        
+        return `
+          <div class="border border-gray-200 rounded-lg p-4 hover:border-primary hover:shadow-sm transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-2xl">${typeIcons[idea.type] || '📄'}</span>
+              <span class="px-2 py-0.5 text-xs font-medium rounded ${engagementColors[idea.engagement]}">${idea.engagement}</span>
+            </div>
+            <h4 class="font-medium text-gray-900 text-sm mb-1 group-hover:text-primary">${idea.title}</h4>
+            <p class="text-xs text-gray-500">${idea.description}</p>
+            <button class="mt-3 text-xs text-primary font-medium hover:underline" onclick="event.stopPropagation(); copyContentIdea('${idea.title.replace(/'/g, "\\'")}')">Copy to clipboard</button>
+          </div>
+        `;
+      }).join('');
+      
+      showToast('Content ideas refreshed!', 'success');
+    }
+
+    // ============================================
+    // END COMPETITOR ANALYSIS FUNCTIONS
+    // ============================================
 
     // Test API Endpoint and display result
     async function testApiEndpoint(type) {
@@ -11471,6 +12498,11 @@ I would like to discuss this confidentially before posting publicly.
       // Load leaderboard when page is shown
       if (pageId === 'leaderboard') {
         loadLeaderboard();
+      }
+      
+      // Load competitor analysis when page is shown
+      if (pageId === 'competitor-analysis') {
+        initCompetitorAnalysis();
       }
     }
     
@@ -14061,6 +15093,9 @@ I would like to discuss this confidentially before posting publicly.
       checkFirstVisit();
       initApiStatus();
       
+      // Check for Stripe payment redirect
+      checkStripePaymentStatus();
+      
       // Initialize dev mode from localStorage
       if (localStorage.getItem('devMode') === 'true') {
         document.body.classList.add('dev-mode');
@@ -14652,9 +15687,14 @@ I would like to discuss this confidentially before posting publicly.
     }
     
     function requestUpgrade() {
-      const suburbs = Array.from(selectedUpgradeSuburbs).join(', ');
+      // Get selected suburbs from the nearby upgrade modal
+      const selectedSuburbs = Array.from(selectedUpgradeSuburbs);
+      
+      // Hide nearby modal and show subscription plan modal with pre-selected suburbs
       hideNearbyUpgradeModal();
-      showToast(`🎉 Upgrade request sent for: ${suburbs}`);
+      showSubscriptionModal(selectedSuburbs);
+      
+      // Clear the nearby modal selections
       selectedUpgradeSuburbs.clear();
       updateUpgradeTotal();
     }

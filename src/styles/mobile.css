@@ -1,0 +1,358 @@
+/**
+ * Mobile-First Responsive Utilities
+ * 
+ * Import this file in your main styles to get mobile-optimized components
+ */
+
+/* ===========================================
+   Touch-Friendly Interactions
+   =========================================== */
+
+/* Increase tap targets on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .btn,
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Larger form inputs on touch devices */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+  
+  /* Larger checkboxes and radio buttons */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 24px;
+    min-width: 24px;
+  }
+  
+  /* Add touch feedback */
+  .touch-highlight {
+    -webkit-tap-highlight-color: rgba(14, 165, 233, 0.2);
+  }
+  
+  /* Remove hover effects on touch devices */
+  .no-touch-hover:hover {
+    background-color: inherit !important;
+  }
+}
+
+/* ===========================================
+   Mobile Navigation
+   =========================================== */
+
+.mobile-nav {
+  @apply fixed bottom-0 left-0 right-0 z-50;
+  @apply bg-white border-t border-gray-200;
+  @apply px-2 py-2;
+  @apply safe-area-padding;
+}
+
+.mobile-nav-items {
+  @apply flex justify-around items-center;
+}
+
+.mobile-nav-item {
+  @apply flex flex-col items-center justify-center;
+  @apply text-xs text-gray-500;
+  @apply py-1 px-3 rounded-lg;
+  @apply transition-colors duration-150;
+  min-width: 64px;
+}
+
+.mobile-nav-item.active {
+  @apply text-purple-600 bg-purple-50;
+}
+
+.mobile-nav-item svg {
+  @apply w-6 h-6 mb-1;
+}
+
+/* ===========================================
+   Safe Area Support (Notch, Home Indicator)
+   =========================================== */
+
+.safe-area-padding {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* ===========================================
+   Mobile Cards and Lists
+   =========================================== */
+
+.mobile-card {
+  @apply bg-white rounded-xl shadow-sm;
+  @apply p-4;
+  @apply touch-manipulation;
+}
+
+.mobile-list-item {
+  @apply flex items-center gap-3;
+  @apply py-4 px-4;
+  @apply border-b border-gray-100 last:border-b-0;
+  @apply active:bg-gray-50;
+  @apply transition-colors duration-150;
+  touch-action: manipulation;
+}
+
+/* ===========================================
+   Swipe Actions
+   =========================================== */
+
+.swipe-container {
+  @apply relative overflow-hidden;
+}
+
+.swipe-content {
+  @apply relative z-10 bg-white;
+  @apply transition-transform duration-200;
+}
+
+.swipe-actions {
+  @apply absolute inset-y-0 right-0;
+  @apply flex items-stretch;
+  @apply transform translate-x-full;
+}
+
+.swipe-action-button {
+  @apply flex items-center justify-center;
+  @apply px-6;
+  @apply text-white font-medium;
+}
+
+.swipe-action-delete {
+  @apply bg-red-500;
+}
+
+.swipe-action-edit {
+  @apply bg-blue-500;
+}
+
+/* ===========================================
+   Pull to Refresh
+   =========================================== */
+
+.pull-to-refresh-indicator {
+  @apply absolute top-0 left-1/2 transform -translate-x-1/2;
+  @apply -mt-12 flex items-center justify-center;
+  @apply w-10 h-10 rounded-full bg-white shadow-md;
+  @apply opacity-0 transition-opacity duration-200;
+}
+
+.pull-to-refresh-indicator.visible {
+  @apply opacity-100;
+}
+
+.pull-to-refresh-indicator.loading {
+  animation: spin 1s linear infinite;
+}
+
+/* ===========================================
+   Mobile Modal / Bottom Sheet
+   =========================================== */
+
+.bottom-sheet {
+  @apply fixed inset-x-0 bottom-0 z-50;
+  @apply bg-white rounded-t-2xl shadow-xl;
+  @apply transform translate-y-full;
+  @apply transition-transform duration-300 ease-out;
+  max-height: 90vh;
+  @apply safe-area-padding;
+}
+
+.bottom-sheet.open {
+  @apply translate-y-0;
+}
+
+.bottom-sheet-handle {
+  @apply flex justify-center pt-3 pb-2;
+}
+
+.bottom-sheet-handle::after {
+  content: '';
+  @apply w-10 h-1 bg-gray-300 rounded-full;
+}
+
+.bottom-sheet-content {
+  @apply px-4 pb-4;
+  @apply overflow-y-auto;
+  max-height: calc(90vh - 60px);
+}
+
+/* ===========================================
+   Mobile Table (Stacked Layout)
+   =========================================== */
+
+@media (max-width: 768px) {
+  .responsive-table {
+    @apply block;
+  }
+  
+  .responsive-table thead {
+    @apply hidden;
+  }
+  
+  .responsive-table tbody {
+    @apply block;
+  }
+  
+  .responsive-table tr {
+    @apply block mb-4 bg-white rounded-lg shadow-sm p-4;
+  }
+  
+  .responsive-table td {
+    @apply flex items-center justify-between py-2;
+    @apply border-b border-gray-100 last:border-b-0;
+  }
+  
+  .responsive-table td::before {
+    content: attr(data-label);
+    @apply font-medium text-gray-500 text-sm;
+  }
+}
+
+/* ===========================================
+   Mobile Typography
+   =========================================== */
+
+@media (max-width: 640px) {
+  .mobile-heading-1 {
+    @apply text-2xl;
+  }
+  
+  .mobile-heading-2 {
+    @apply text-xl;
+  }
+  
+  .mobile-heading-3 {
+    @apply text-lg;
+  }
+  
+  .mobile-text {
+    @apply text-base leading-relaxed;
+  }
+}
+
+/* ===========================================
+   Responsive Grid Utilities
+   =========================================== */
+
+.mobile-grid {
+  @apply grid gap-4;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 400px) {
+  .mobile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===========================================
+   Mobile-Specific Animations
+   =========================================== */
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Smooth momentum scrolling on iOS */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* ===========================================
+   Floating Action Button (FAB)
+   =========================================== */
+
+.fab {
+  @apply fixed z-40;
+  @apply w-14 h-14 rounded-full;
+  @apply flex items-center justify-center;
+  @apply bg-purple-600 text-white;
+  @apply shadow-lg shadow-purple-200;
+  @apply transition-all duration-200;
+  right: 16px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0));
+}
+
+.fab:active {
+  @apply scale-95 shadow-md;
+}
+
+.fab svg {
+  @apply w-6 h-6;
+}
+
+/* ===========================================
+   Loading States
+   =========================================== */
+
+.skeleton-mobile {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+.skeleton-card {
+  @apply bg-white rounded-xl p-4 space-y-3;
+}
+
+.skeleton-card .skeleton-line {
+  @apply h-4 bg-gray-200 rounded;
+}
+
+.skeleton-card .skeleton-line.short {
+  @apply w-2/3;
+}
+
+/* ===========================================
+   Touch Gestures Feedback
+   =========================================== */
+
+.touch-scale {
+  @apply transition-transform duration-100;
+}
+
+.touch-scale:active {
+  @apply scale-95;
+}
+
+/* ===========================================
+   Keyboard Avoiding View
+   =========================================== */
+
+.keyboard-avoiding {
+  @apply transition-transform duration-200;
+}
+
+/* iOS keyboard workaround */
+@supports (-webkit-touch-callout: none) {
+  .keyboard-avoiding-ios {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}

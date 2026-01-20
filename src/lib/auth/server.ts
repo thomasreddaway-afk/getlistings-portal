@@ -2,12 +2,13 @@
  * Authentication Utilities
  * 
  * Server-side auth verification and session management.
- * Integrates with existing phone-based Firebase auth.
+ * Uses JWT tokens from MongoDB API (same as demo.html)
  */
 
 import { NextRequest } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
 import { User, UserRole } from '@/types';
+
+const API_BASE_URL = 'https://api.prop.deals/v1';
 
 /**
  * Decoded token with user info
@@ -30,7 +31,7 @@ export interface AuthResult {
 }
 
 /**
- * Verify Firebase ID token from request
+ * Verify JWT token from request by calling the API
  */
 export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
   try {
@@ -46,17 +47,31 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
     
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
-    // Verify the token
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    // Verify token by calling the profile endpoint
+    const response = await fetch(`${API_BASE_URL}/user/profile`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      return {
+        authenticated: false,
+        error: 'Invalid or expired token',
+      };
+    }
+    
+    const userData = await response.json();
     
     return {
       authenticated: true,
       user: {
-        uid: decodedToken.uid,
-        phone: decodedToken.phone_number,
-        email: decodedToken.email,
-        role: decodedToken.role as UserRole,
-        has_exclusive_access: decodedToken.has_exclusive_access as boolean,
+        uid: userData._id || userData.id,
+        phone: userData.phoneNumber || userData.phone,
+        email: userData.email,
+        role: userData.role as UserRole,
+        has_exclusive_access: userData.has_exclusive_access || userData.hasExclusiveAccess,
       },
     };
   } catch (error) {

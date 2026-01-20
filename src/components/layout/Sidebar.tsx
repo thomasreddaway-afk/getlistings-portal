@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Menu,
   X,
+  Trophy,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth/client';
@@ -30,6 +31,7 @@ const mainNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Leads', href: '/leads', icon: Users },
   { name: 'Properties', href: '/properties', icon: Building2 },
+  { name: 'Competitor Analysis', href: '/competitor-analysis', icon: Trophy },
 ];
 
 const premiumNavItems: NavItem[] = [

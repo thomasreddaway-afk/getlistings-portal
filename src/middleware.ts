@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// Demo mode - set to true to bypass authentication for local development
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || process.env.NODE_ENV === 'development';
+
 // Paths that don't require authentication
 const publicPaths = [
   '/login',
@@ -16,6 +19,11 @@ const publicPrefixes = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // In demo mode, allow all access without authentication
+  if (DEMO_MODE) {
+    return NextResponse.next();
+  }
 
   // Check if the path is public
   const isPublicPath = publicPaths.some(path => pathname === path);
