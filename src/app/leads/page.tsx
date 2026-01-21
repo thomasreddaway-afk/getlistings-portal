@@ -1,697 +1,450 @@
 'use client';
 
 import { DemoLayout } from '@/components/layout';
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { apiRequest } from '@/lib/api';
+import { useState, useEffect, useMemo } from 'react';
+import { RefreshCw, ChevronUp, ChevronDown, Search, Filter } from 'lucide-react';
 
-type ScoreFilter = 'all' | 'high' | 'medium' | 'low';
-type SignalFilter = 'all' | 'Expiring listing' | 'Listed for sale' | 'Requested valuation' | 'Neighbour selling' | 'FSBO';
-type SortField = 'property' | 'suburb' | 'score' | 'value' | 'updated';
+// Types from API
+interface Lead {
+  _id: string;
+  streetAddress: string;
+  fullAddress?: string;
+  suburb: string;
+  state?: string;
+  postCode?: string;
+  sellingScore: number;
+  salePrice?: string;
+  garageSale?: boolean;
+  listedForSale?: boolean;
+  listedForRent?: boolean;
+  requested?: boolean;
+  neighbourSold?: boolean;
+  recentlySold?: boolean;
+  socialTag?: boolean;
+  fsboListing?: boolean;
+  updatedAt: string;
+  owner1Name?: string;
+  ownerType?: string;
+  bed?: number;
+  bath?: number;
+  car?: number;
+  propertyType?: string;
+  unLocked?: boolean;
+}
+
+interface Suburb {
+  suburb: string;
+  state?: string;
+}
+
+type SortField = 'streetAddress' | 'suburb' | 'sellingScore' | 'salePrice' | 'updatedAt';
 type SortDirection = 'asc' | 'desc';
 
-interface Signal {
-  type: string;
-  color: string;
-  bgColor: string;
+const signalStyleMap: Record<string, { text: string; bg: string; color: string }> = {
+  garageSale: { text: 'Garage sale', bg: 'bg-amber-100', color: 'text-amber-700' },
+  listedForSale: { text: 'Listed for sale', bg: 'bg-green-100', color: 'text-green-700' },
+  listedForRent: { text: 'Listed for rent', bg: 'bg-cyan-100', color: 'text-cyan-700' },
+  requested: { text: 'Requested valuation', bg: 'bg-pink-100', color: 'text-pink-700' },
+  neighbourSold: { text: 'Neighbour selling', bg: 'bg-purple-100', color: 'text-purple-700' },
+  recentlySold: { text: 'Recently sold', bg: 'bg-gray-100', color: 'text-gray-700' },
+  socialTag: { text: 'Tagged on social', bg: 'bg-blue-100', color: 'text-blue-700' },
+  fsboListing: { text: 'FSBO', bg: 'bg-red-100', color: 'text-red-700' },
+};
+
+function getLeadSignals(lead: Lead) {
+  const signals: { text: string; bg: string; color: string }[] = [];
+  if (lead.garageSale) signals.push(signalStyleMap.garageSale);
+  if (lead.listedForSale) signals.push(signalStyleMap.listedForSale);
+  if (lead.listedForRent) signals.push(signalStyleMap.listedForRent);
+  if (lead.requested) signals.push(signalStyleMap.requested);
+  if (lead.neighbourSold) signals.push(signalStyleMap.neighbourSold);
+  if (lead.recentlySold) signals.push(signalStyleMap.recentlySold);
+  if (lead.socialTag) signals.push(signalStyleMap.socialTag);
+  if (lead.fsboListing) signals.push(signalStyleMap.fsboListing);
+  return signals;
 }
 
-interface Lead {
-  id: string;
-  address: string;
-  suburb: string;
-  score: number;
-  signals: Signal[];
-  estimatedValue: number;
-  updated: string;
-  updatedDays: number;
-  beds: number;
-  baths: number;
-  cars: number;
-  propertyType: string;
+function formatTimeAgo(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+  if (diffMins < 10080) return `${Math.floor(diffMins / 1440)}d ago`;
+  if (diffMins < 43200) return `${Math.floor(diffMins / 10080)}w ago`;
+  return `${Math.floor(diffMins / 43200)}mo ago`;
 }
 
-// Mock data matching demo.html structure
-const mockLeads: Lead[] = [
-  {
-    id: '1',
-    address: '42 Ocean View Drive',
-    suburb: 'Bondi Beach',
-    score: 94,
-    signals: [
-      { type: 'Expiring listing', color: 'text-amber-700', bgColor: 'bg-amber-100' },
-      { type: 'Requested valuation', color: 'text-pink-700', bgColor: 'bg-pink-100' },
-    ],
-    estimatedValue: 2850000,
-    updated: '2 hours ago',
-    updatedDays: 0,
-    beds: 4,
-    baths: 2,
-    cars: 2,
-    propertyType: 'House',
-  },
-  {
-    id: '2',
-    address: '15/88 Raglan Street',
-    suburb: 'Mosman',
-    score: 91,
-    signals: [
-      { type: 'Listed for sale', color: 'text-green-700', bgColor: 'bg-green-100' },
-    ],
-    estimatedValue: 1800000,
-    updated: '5 hours ago',
-    updatedDays: 0,
-    beds: 3,
-    baths: 2,
-    cars: 1,
-    propertyType: 'Apartment',
-  },
-  {
-    id: '3',
-    address: '7 Burrawong Avenue',
-    suburb: 'Cremorne',
-    score: 87,
-    signals: [
-      { type: 'Neighbour selling', color: 'text-purple-700', bgColor: 'bg-purple-100' },
-      { type: 'Expiring listing', color: 'text-amber-700', bgColor: 'bg-amber-100' },
-    ],
-    estimatedValue: 2500000,
-    updated: '1 day ago',
-    updatedDays: 1,
-    beds: 3,
-    baths: 2,
-    cars: 2,
-    propertyType: 'House',
-  },
-  {
-    id: '4',
-    address: '23/12 The Corso',
-    suburb: 'Manly',
-    score: 82,
-    signals: [
-      { type: 'FSBO', color: 'text-red-700', bgColor: 'bg-red-100' },
-    ],
-    estimatedValue: 1400000,
-    updated: '2 days ago',
-    updatedDays: 2,
-    beds: 2,
-    baths: 1,
-    cars: 1,
-    propertyType: 'Apartment',
-  },
-  {
-    id: '5',
-    address: '88 Military Road',
-    suburb: 'Neutral Bay',
-    score: 78,
-    signals: [
-      { type: 'Listed for sale', color: 'text-green-700', bgColor: 'bg-green-100' },
-      { type: 'Requested valuation', color: 'text-pink-700', bgColor: 'bg-pink-100' },
-    ],
-    estimatedValue: 2100000,
-    updated: '3 days ago',
-    updatedDays: 3,
-    beds: 4,
-    baths: 3,
-    cars: 2,
-    propertyType: 'Townhouse',
-  },
-  {
-    id: '6',
-    address: '5/22 Wycombe Road',
-    suburb: 'Neutral Bay',
-    score: 72,
-    signals: [
-      { type: 'Expiring listing', color: 'text-amber-700', bgColor: 'bg-amber-100' },
-    ],
-    estimatedValue: 950000,
-    updated: '5 days ago',
-    updatedDays: 5,
-    beds: 2,
-    baths: 1,
-    cars: 1,
-    propertyType: 'Apartment',
-  },
-  {
-    id: '7',
-    address: '124 Spit Road',
-    suburb: 'Mosman',
-    score: 65,
-    signals: [
-      { type: 'Neighbour selling', color: 'text-purple-700', bgColor: 'bg-purple-100' },
-    ],
-    estimatedValue: 4500000,
-    updated: '1 week ago',
-    updatedDays: 7,
-    beds: 5,
-    baths: 4,
-    cars: 3,
-    propertyType: 'House',
-  },
-  {
-    id: '8',
-    address: '9 Bay View Street',
-    suburb: 'McMahons Point',
-    score: 58,
-    signals: [
-      { type: 'Listed for sale', color: 'text-green-700', bgColor: 'bg-green-100' },
-    ],
-    estimatedValue: 1200000,
-    updated: '2 weeks ago',
-    updatedDays: 14,
-    beds: 2,
-    baths: 1,
-    cars: 1,
-    propertyType: 'Apartment',
-  },
-  {
-    id: '9',
-    address: '33 Beach Road',
-    suburb: 'Bondi Beach',
-    score: 52,
-    signals: [
-      { type: 'FSBO', color: 'text-red-700', bgColor: 'bg-red-100' },
-      { type: 'Expiring listing', color: 'text-amber-700', bgColor: 'bg-amber-100' },
-    ],
-    estimatedValue: 3200000,
-    updated: '3 weeks ago',
-    updatedDays: 21,
-    beds: 3,
-    baths: 2,
-    cars: 2,
-    propertyType: 'House',
-  },
-  {
-    id: '10',
-    address: '156 Blues Point Road',
-    suburb: 'McMahons Point',
-    score: 45,
-    signals: [
-      { type: 'Requested valuation', color: 'text-pink-700', bgColor: 'bg-pink-100' },
-    ],
-    estimatedValue: 1650000,
-    updated: '1 month ago',
-    updatedDays: 30,
-    beds: 3,
-    baths: 2,
-    cars: 1,
-    propertyType: 'Apartment',
-  },
-  {
-    id: '11',
-    address: '78 Bradleys Head Road',
-    suburb: 'Mosman',
-    score: 38,
-    signals: [
-      { type: 'Neighbour selling', color: 'text-purple-700', bgColor: 'bg-purple-100' },
-    ],
-    estimatedValue: 5800000,
-    updated: '1 month ago',
-    updatedDays: 35,
-    beds: 6,
-    baths: 4,
-    cars: 4,
-    propertyType: 'House',
-  },
-  {
-    id: '12',
-    address: '12/45 Ben Boyd Road',
-    suburb: 'Neutral Bay',
-    score: 28,
-    signals: [
-      { type: 'Listed for sale', color: 'text-green-700', bgColor: 'bg-green-100' },
-    ],
-    estimatedValue: 780000,
-    updated: '2 months ago',
-    updatedDays: 60,
-    beds: 1,
-    baths: 1,
-    cars: 1,
-    propertyType: 'Apartment',
-  },
-];
+function formatValue(salePrice?: string): string {
+  if (!salePrice) return '—';
+  const price = parseFloat(salePrice.replace(/[$,]/g, ''));
+  if (price >= 1000000) return `$${(price / 1000000).toFixed(1)}M`;
+  if (price >= 1000) return `$${(price / 1000).toFixed(0)}K`;
+  return salePrice;
+}
 
-const suburbs = ['All Suburbs', 'Bondi Beach', 'Mosman', 'Cremorne', 'Manly', 'Neutral Bay', 'McMahons Point'];
+function getScoreColor(score: number): string {
+  if (score >= 80) return 'bg-green-100 text-green-700';
+  if (score >= 60) return 'bg-yellow-100 text-yellow-700';
+  return 'bg-orange-100 text-orange-700';
+}
 
 export default function LeadsPage() {
-  const router = useRouter();
-  const [activeSuburb, setActiveSuburb] = useState('All Suburbs');
-  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all');
-  const [signalFilter, setSignalFilter] = useState<SignalFilter>('all');
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [suburbs, setSuburbs] = useState<Suburb[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [hideSoldListed, setHideSoldListed] = useState(false);
-  const [sortField, setSortField] = useState<SortField>('score');
+  const [selectedSuburb, setSelectedSuburb] = useState<string>('all');
+  const [scoreFilter, setScoreFilter] = useState<string>('all');
+  
+  // Sorting
+  const [sortField, setSortField] = useState<SortField>('sellingScore');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
+  // Load data from API
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Get subscribed suburbs first
+      const suburbsResponse = await apiRequest<Suburb[]>('/lead/my-suburbs-list', 'GET');
+      setSuburbs(suburbsResponse || []);
+      
+      // Get leads
+      const leadsResponse = await apiRequest<{ leads: Lead[]; total: number }>('/lead/all', 'POST', {
+        page: 1,
+        perPage: 10000, // Load all like demo.html
+        suburbs: suburbsResponse?.map(s => s.suburb) || [],
+      });
+      
+      if (leadsResponse.leads) {
+        setLeads(leadsResponse.leads);
+      }
+    } catch (err) {
+      console.error('Failed to load leads:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load leads');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Filter and sort leads
   const filteredLeads = useMemo(() => {
-    let filtered = [...mockLeads];
-
-    // Suburb filter
-    if (activeSuburb !== 'All Suburbs') {
-      filtered = filtered.filter((lead) => lead.suburb === activeSuburb);
-    }
-
-    // Score filter
-    if (scoreFilter === 'high') {
-      filtered = filtered.filter((lead) => lead.score >= 75);
-    } else if (scoreFilter === 'medium') {
-      filtered = filtered.filter((lead) => lead.score >= 50 && lead.score < 75);
-    } else if (scoreFilter === 'low') {
-      filtered = filtered.filter((lead) => lead.score >= 10 && lead.score < 50);
-    }
-
-    // Signal filter
-    if (signalFilter !== 'all') {
-      filtered = filtered.filter((lead) =>
-        lead.signals.some((s) => s.type === signalFilter)
-      );
-    }
-
-    // Hide sold & listed
-    if (hideSoldListed) {
-      filtered = filtered.filter((lead) =>
-        !lead.signals.some((s) => s.type === 'Listed for sale')
-      );
-    }
-
-    // Search
+    let result = [...leads];
+    
+    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (lead) =>
-          lead.address.toLowerCase().includes(query) ||
-          lead.suburb.toLowerCase().includes(query)
+      result = result.filter(lead => 
+        lead.streetAddress?.toLowerCase().includes(query) ||
+        lead.suburb?.toLowerCase().includes(query) ||
+        lead.owner1Name?.toLowerCase().includes(query)
       );
     }
-
+    
+    // Suburb filter
+    if (selectedSuburb !== 'all') {
+      result = result.filter(lead => 
+        lead.suburb?.toLowerCase() === selectedSuburb.toLowerCase()
+      );
+    }
+    
+    // Score filter
+    if (scoreFilter === 'high') {
+      result = result.filter(lead => lead.sellingScore >= 80);
+    } else if (scoreFilter === 'medium') {
+      result = result.filter(lead => lead.sellingScore >= 50 && lead.sellingScore < 80);
+    } else if (scoreFilter === 'low') {
+      result = result.filter(lead => lead.sellingScore < 50);
+    }
+    
     // Sort
-    filtered.sort((a, b) => {
+    result.sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
-        case 'property':
-          comparison = a.address.localeCompare(b.address);
+        case 'streetAddress':
+          comparison = (a.streetAddress || '').localeCompare(b.streetAddress || '');
           break;
         case 'suburb':
-          comparison = a.suburb.localeCompare(b.suburb);
+          comparison = (a.suburb || '').localeCompare(b.suburb || '');
           break;
-        case 'score':
-          comparison = a.score - b.score;
+        case 'sellingScore':
+          comparison = (a.sellingScore || 0) - (b.sellingScore || 0);
           break;
-        case 'value':
-          comparison = a.estimatedValue - b.estimatedValue;
+        case 'salePrice':
+          const priceA = parseFloat((a.salePrice || '0').replace(/[$,]/g, ''));
+          const priceB = parseFloat((b.salePrice || '0').replace(/[$,]/g, ''));
+          comparison = priceA - priceB;
           break;
-        case 'updated':
-          comparison = a.updatedDays - b.updatedDays;
+        case 'updatedAt':
+          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
           break;
       }
       return sortDirection === 'desc' ? -comparison : comparison;
     });
+    
+    return result;
+  }, [leads, searchQuery, selectedSuburb, scoreFilter, sortField, sortDirection]);
 
-    return filtered;
-  }, [activeSuburb, scoreFilter, signalFilter, searchQuery, hideSoldListed, sortField, sortDirection]);
-
-  const paginatedLeads = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredLeads.slice(start, start + itemsPerPage);
-  }, [filteredLeads, currentPage]);
-
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  // Suburb counts for tabs
+  const suburbCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: leads.length };
+    suburbs.forEach(s => {
+      counts[s.suburb.toLowerCase()] = leads.filter(l => 
+        l.suburb?.toLowerCase() === s.suburb.toLowerCase()
+      ).length;
+    });
+    return counts;
+  }, [leads, suburbs]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
       setSortDirection('desc');
     }
   };
 
-  const formatValue = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    return `$${(value / 1000).toFixed(0)}K`;
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc' ? 
+      <ChevronUp className="w-4 h-4 inline ml-1" /> : 
+      <ChevronDown className="w-4 h-4 inline ml-1" />;
   };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 75) return 'text-green-600 bg-green-100';
-    if (score >= 50) return 'text-amber-600 bg-amber-100';
-    return 'text-gray-600 bg-gray-100';
-  };
-
-  const getSuburbCount = (suburb: string) => {
-    if (suburb === 'All Suburbs') return mockLeads.length;
-    return mockLeads.filter((l) => l.suburb === suburb).length;
-  };
-
-  const SortIcon = ({ field }: { field: SortField }) => (
-    <svg
-      className={`w-4 h-4 ${sortField === field ? 'text-primary' : 'text-gray-400'}`}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      {sortField === field && sortDirection === 'desc' ? (
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-      ) : sortField === field && sortDirection === 'asc' ? (
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-      ) : (
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-      )}
-    </svg>
-  );
 
   return (
     <DemoLayout currentPage="leads">
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-auto bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Seller Scores</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Your {suburbs.length - 1} subscribed suburbs</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {filteredLeads.length.toLocaleString()} leads in your subscribed suburbs
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
             </div>
           </div>
         </div>
 
         {/* Suburb Tabs */}
-        <div className="bg-white border-b border-gray-200 px-4">
-          <div className="flex items-center space-x-1 overflow-x-auto">
-            {suburbs.map((suburb) => (
+        <div className="bg-white border-b border-gray-200 px-4 overflow-x-auto">
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => setSelectedSuburb('all')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${
+                selectedSuburb === 'all'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              All Suburbs
+              <span className={`ml-1.5 px-2 py-0.5 text-xs rounded-full ${
+                selectedSuburb === 'all' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {suburbCounts.all?.toLocaleString()}
+              </span>
+            </button>
+            {suburbs.map(s => (
               <button
-                key={suburb}
-                onClick={() => {
-                  setActiveSuburb(suburb);
-                  setCurrentPage(1);
-                }}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeSuburb === suburb
+                key={s.suburb}
+                onClick={() => setSelectedSuburb(s.suburb.toLowerCase())}
+                className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${
+                  selectedSuburb === s.suburb.toLowerCase()
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {suburb}
-                <span
-                  className={`ml-1.5 px-2 py-0.5 text-xs rounded-full ${
-                    activeSuburb === suburb
-                      ? 'bg-primary/10 text-primary'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {getSuburbCount(suburb)}
+                {s.suburb}
+                <span className={`ml-1.5 px-2 py-0.5 text-xs rounded-full ${
+                  selectedSuburb === s.suburb.toLowerCase() ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {suburbCounts[s.suburb.toLowerCase()]?.toLocaleString() || 0}
                 </span>
               </button>
             ))}
-            <div className="flex-1"></div>
-            <button
-              onClick={() => router.push('/settings')}
-              className="flex items-center space-x-1 px-3 py-1.5 text-xs text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span>Manage Suburbs</span>
-            </button>
           </div>
         </div>
 
-        {/* Filter Row */}
-        <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center space-x-2 overflow-x-auto">
-            <span className="text-xs text-gray-500 font-medium mr-1 flex-shrink-0">Filter:</span>
-
-            {/* All filter */}
-            <button
-              onClick={() => {
-                setScoreFilter('all');
-                setSignalFilter('all');
-              }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                scoreFilter === 'all' && signalFilter === 'all'
-                  ? 'bg-primary text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              All
-            </button>
-
-            {/* Score Filters */}
-            <button
-              onClick={() => { setScoreFilter('high'); setSignalFilter('all'); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                scoreFilter === 'high'
-                  ? 'bg-green-100 border border-green-300 text-green-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50 hover:text-green-700'
-              }`}
-            >
-              75%+
-            </button>
-            <button
-              onClick={() => { setScoreFilter('medium'); setSignalFilter('all'); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                scoreFilter === 'medium'
-                  ? 'bg-amber-100 border border-amber-300 text-amber-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
-              }`}
-            >
-              50-75%
-            </button>
-            <button
-              onClick={() => { setScoreFilter('low'); setSignalFilter('all'); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                scoreFilter === 'low'
-                  ? 'bg-gray-200 border border-gray-400 text-gray-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400 hover:bg-gray-100 hover:text-gray-700'
-              }`}
-            >
-              10-50%
-            </button>
-
-            <div className="w-px h-5 bg-gray-300 mx-1 flex-shrink-0"></div>
-
-            {/* Signal Filters */}
-            <button
-              onClick={() => { setSignalFilter('Expiring listing'); setScoreFilter('all'); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                signalFilter === 'Expiring listing'
-                  ? 'bg-amber-100 border border-amber-300 text-amber-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
-              }`}
-            >
-              Expiring
-            </button>
-            <button
-              onClick={() => { setSignalFilter('Listed for sale'); setScoreFilter('all'); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                signalFilter === 'Listed for sale'
-                  ? 'bg-green-100 border border-green-300 text-green-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50 hover:text-green-700'
-              }`}
-            >
-              Listed
-            </button>
-            <button
-              onClick={() => { setSignalFilter('Requested valuation'); setScoreFilter('all'); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                signalFilter === 'Requested valuation'
-                  ? 'bg-pink-100 border border-pink-300 text-pink-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700'
-              }`}
-            >
-              Valuation
-            </button>
-            <button
-              onClick={() => { setSignalFilter('Neighbour selling'); setScoreFilter('all'); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                signalFilter === 'Neighbour selling'
-                  ? 'bg-purple-100 border border-purple-300 text-purple-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700'
-              }`}
-            >
-              Neighbour
-            </button>
-            <button
-              onClick={() => { setSignalFilter('FSBO'); setScoreFilter('all'); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                signalFilter === 'FSBO'
-                  ? 'bg-red-100 border border-red-300 text-red-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700'
-              }`}
-            >
-              FSBO
-            </button>
-
-            <div className="w-px h-5 bg-gray-300 mx-1 flex-shrink-0"></div>
-
-            {/* Hide Sold & Listed Toggle */}
-            <button
-              onClick={() => setHideSoldListed(!hideSoldListed)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 transition-colors ${
-                hideSoldListed
-                  ? 'bg-gray-200 border border-gray-400 text-gray-700'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Hide Sold & Listed
-            </button>
-
-            <div className="flex-1"></div>
-
+        {/* Filters Row */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center space-x-4">
             {/* Search */}
-            <div className="relative flex-shrink-0">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
+                placeholder="Search by address, suburb, or owner..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-primary w-40 bg-white"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
-              <svg
-                className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            </div>
+            
+            {/* Score Filter */}
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={scoreFilter}
+                onChange={(e) => setScoreFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+                <option value="all">All Scores</option>
+                <option value="high">High (80+)</option>
+                <option value="medium">Medium (50-79)</option>
+                <option value="low">Low (&lt;50)</option>
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Leads Table */}
-        <div className="flex-1 overflow-auto">
-          <div className="bg-white overflow-x-auto">
-            <table className="min-w-full" style={{ tableLayout: 'fixed' }}>
-              <thead className="bg-gray-50 sticky top-0 z-10">
+        {error && (
+          <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={loadData} className="mt-2 text-sm text-red-600 underline">Retry</button>
+          </div>
+        )}
+
+        {/* Data Table */}
+        <div className="p-4">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th style={{ width: 240, minWidth: 140 }} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <div onClick={() => handleSort('property')} className="flex items-center space-x-1 cursor-pointer hover:text-gray-700">
-                      <span>Property</span>
-                      <SortIcon field="property" />
-                    </div>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('streetAddress')}
+                  >
+                    Property <SortIcon field="streetAddress" />
                   </th>
-                  <th style={{ width: 120, minWidth: 90 }} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <div onClick={() => handleSort('suburb')} className="flex items-center space-x-1 cursor-pointer hover:text-gray-700">
-                      <span>Suburb</span>
-                      <SortIcon field="suburb" />
-                    </div>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('suburb')}
+                  >
+                    Suburb <SortIcon field="suburb" />
                   </th>
-                  <th style={{ width: 130, minWidth: 100 }} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <div onClick={() => handleSort('score')} className="flex items-center space-x-1 cursor-pointer hover:text-gray-700">
-                      <span>AI Seller Score</span>
-                      <SortIcon field="score" />
-                    </div>
+                  <th 
+                    className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('sellingScore')}
+                  >
+                    Score <SortIcon field="sellingScore" />
                   </th>
-                  <th style={{ width: 280, minWidth: 160 }} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <span>Signals</span>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Signals
                   </th>
-                  <th style={{ width: 110, minWidth: 90 }} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <div onClick={() => handleSort('value')} className="flex items-center space-x-1 cursor-pointer hover:text-gray-700">
-                      <span>Est. Value</span>
-                      <SortIcon field="value" />
-                    </div>
+                  <th 
+                    className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('salePrice')}
+                  >
+                    Est. Value <SortIcon field="salePrice" />
                   </th>
-                  <th style={{ width: 100, minWidth: 80 }} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    <div onClick={() => handleSort('updated')} className="flex items-center space-x-1 cursor-pointer hover:text-gray-700">
-                      <span>Updated</span>
-                      <SortIcon field="updated" />
-                    </div>
+                  <th 
+                    className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('updatedAt')}
+                  >
+                    Updated <SortIcon field="updatedAt" />
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {paginatedLeads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/leads/${lead.id}`)}
-                  >
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900 text-sm">{lead.address}</p>
-                        <p className="text-xs text-gray-500">
-                          {lead.beds} bed • {lead.baths} bath • {lead.cars} car • {lead.propertyType}
-                        </p>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                        <span className="text-gray-500">Loading leads...</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{lead.suburb}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold ${getScoreColor(lead.score)}`}>
-                        {lead.score}%
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {lead.signals.map((signal, idx) => (
-                          <span
-                            key={idx}
-                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${signal.bgColor} ${signal.color}`}
-                          >
-                            {signal.type}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900">{formatValue(lead.estimatedValue)}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs text-gray-500">{lead.updated}</span>
                     </td>
                   </tr>
-                ))}
+                ) : filteredLeads.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
+                      {leads.length === 0 
+                        ? 'No leads found. Subscribe to suburbs to start receiving leads.'
+                        : 'No leads match your filters.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLeads.slice(0, 100).map((lead) => (
+                    <tr key={lead._id} className="hover:bg-gray-50 cursor-pointer">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                            🏠
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{lead.streetAddress}</p>
+                            <p className="text-xs text-gray-500">
+                              {lead.bed && `${lead.bed} bed`}
+                              {lead.bath && ` • ${lead.bath} bath`}
+                              {lead.car && ` • ${lead.car} car`}
+                              {lead.propertyType && ` • ${lead.propertyType}`}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-gray-700">{lead.suburb}</span>
+                        {lead.state && <span className="text-xs text-gray-400 ml-1">{lead.state}</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${getScoreColor(lead.sellingScore)}`}>
+                          {lead.sellingScore}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {getLeadSignals(lead).slice(0, 2).map((signal, idx) => (
+                            <span key={idx} className={`px-2 py-0.5 text-xs rounded ${signal.bg} ${signal.color}`}>
+                              {signal.text}
+                            </span>
+                          ))}
+                          {getLeadSignals(lead).length > 2 && (
+                            <span className="px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-600">
+                              +{getLeadSignals(lead).length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-sm font-medium text-gray-900">{formatValue(lead.salePrice)}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-xs text-gray-500">{formatTimeAgo(lead.updatedAt)}</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
-
-            {paginatedLeads.length === 0 && (
-              <div className="p-12 text-center">
-                <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <p className="text-gray-500">No leads match your filters</p>
+            
+            {filteredLeads.length > 100 && (
+              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-center text-sm text-gray-500">
+                Showing 100 of {filteredLeads.length.toLocaleString()} leads. Use filters to narrow down results.
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Pagination */}
-        <div className="bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            Showing {Math.min((currentPage - 1) * itemsPerPage + 1, filteredLeads.length)}-
-            {Math.min(currentPage * itemsPerPage, filteredLeads.length)} of {filteredLeads.length} properties
-          </p>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1.5 rounded-lg text-sm ${
-                  currentPage === page
-                    ? 'bg-primary text-white'
-                    : 'border border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
           </div>
         </div>
       </div>

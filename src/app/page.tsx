@@ -2,6 +2,8 @@
 
 import { DemoLayout } from '@/components/layout';
 import { useAuth } from '@/lib/auth/client';
+import { apiRequest } from '@/lib/api';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Phone, 
@@ -10,72 +12,69 @@ import {
   MapPin, 
   Award,
   Megaphone,
-  Lock 
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 
-// Mock data for dashboard
-const mockHotLeads = [
-  {
-    id: 1,
-    address: '78 Park Avenue, Mosman',
-    score: 88,
-    subtitle: 'Valuation requested • Est. $1.8M',
-    tags: [
-      { label: 'Mortgage free', color: 'green' },
-      { label: '15yr owner', color: 'blue' },
-    ],
-  },
-  {
-    id: 2,
-    address: '23 Harbour View, Manly',
-    score: 85,
-    subtitle: 'Neighbour sold $2.1M last week',
-    tags: [
-      { label: 'Downsizing', color: 'amber' },
-      { label: 'Empty nester', color: 'purple' },
-    ],
-  },
-  {
-    id: 3,
-    address: '156 Beach Road, Coogee',
-    score: 82,
-    subtitle: 'DA approved, renovation complete',
-    tags: [
-      { label: 'Just renovated', color: 'green' },
-    ],
-  },
-];
+// Types for API responses
+interface DashboardMetrics {
+  unLockedLeadsCount?: number;
+  subscribedSuburbs?: number;
+  leaderboardPosition?: number;
+  marketingOpportunities?: number;
+  topLead?: {
+    address: string;
+    ownerName: string;
+    score: number;
+    estimatedValue: string;
+    estimatedCommission: string;
+    signals: string[];
+    lastActivity: string;
+  };
+}
 
-const mockExpiringListings = [
-  {
-    id: 1,
-    address: '15 Arinya Road, Ashgrove',
-    daysLeft: 3,
-    urgency: 'red',
-    agent: 'Ray White',
-    daysOnMarket: 90,
-    priceRange: '$1.2M - $1.35M',
-  },
-  {
-    id: 2,
-    address: '8 Hillside Crescent, Mosman',
-    daysLeft: 7,
-    urgency: 'orange',
-    agent: 'McGrath',
-    daysOnMarket: 120,
-    priceRange: '$2.8M - $3.1M',
-  },
-  {
-    id: 3,
-    address: '27 Victoria Street, Potts Point',
-    daysLeft: 14,
-    urgency: 'amber',
-    agent: 'LJ Hooker',
-    daysOnMarket: 0,
-    priceRange: '$950K - $1.05M',
-    note: 'Price reduced twice',
-  },
-];
+interface Lead {
+  _id: string;
+  streetAddress: string;
+  suburb: string;
+  sellingScore: number;
+  salePrice?: string;
+  garageSale?: boolean;
+  listedForSale?: boolean;
+  listedForRent?: boolean;
+  requested?: boolean;
+  neighbourSold?: boolean;
+  recentlySold?: boolean;
+  socialTag?: boolean;
+  fsboListing?: boolean;
+  updatedAt: string;
+  owner1Name?: string;
+  bed?: number;
+  bath?: number;
+  car?: number;
+}
+
+interface ExpiredListing {
+  _id: string;
+  streetAddress: string;
+  suburb: string;
+  daysUntilExpiry: number;
+  agentName?: string;
+  daysOnMarket?: number;
+  priceRange?: string;
+  note?: string;
+}
+
+const signalStyleMap: Record<string, { text: string; color: string }> = {
+  garageSale: { text: 'Garage sale', color: 'amber' },
+  listedForSale: { text: 'Listed for sale', color: 'green' },
+  listedForRent: { text: 'Listed for rent', color: 'cyan' },
+  requested: { text: 'Valuation requested', color: 'pink' },
+  neighbourSold: { text: 'Neighbour sold', color: 'purple' },
+  recentlySold: { text: 'Recently sold', color: 'gray' },
+  socialTag: { text: 'Tagged on social', color: 'blue' },
+  fsboListing: { text: 'FSBO', color: 'red' },
+};
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -99,23 +98,117 @@ function getTagColorClasses(color: string): string {
     purple: 'bg-purple-100 text-purple-700',
     orange: 'bg-orange-100 text-orange-700',
     red: 'bg-red-100 text-red-700',
+    pink: 'bg-pink-100 text-pink-700',
+    cyan: 'bg-cyan-100 text-cyan-700',
+    gray: 'bg-gray-100 text-gray-700',
   };
   return colorMap[color] || 'bg-gray-100 text-gray-700';
 }
 
-function getUrgencyColorClasses(urgency: string): string {
-  const colorMap: Record<string, string> = {
-    red: 'bg-red-100 text-red-700',
-    orange: 'bg-orange-100 text-orange-700',
-    amber: 'bg-amber-100 text-amber-700',
-  };
-  return colorMap[urgency] || 'bg-gray-100 text-gray-700';
+function getUrgencyColorClasses(daysLeft: number): string {
+  if (daysLeft <= 3) return 'bg-red-100 text-red-700';
+  if (daysLeft <= 7) return 'bg-orange-100 text-orange-700';
+  return 'bg-amber-100 text-amber-700';
+}
+
+function getLeadSignals(lead: Lead) {
+  const signals: { label: string; color: string }[] = [];
+  if (lead.garageSale) signals.push({ label: signalStyleMap.garageSale.text, color: signalStyleMap.garageSale.color });
+  if (lead.listedForSale) signals.push({ label: signalStyleMap.listedForSale.text, color: signalStyleMap.listedForSale.color });
+  if (lead.requested) signals.push({ label: signalStyleMap.requested.text, color: signalStyleMap.requested.color });
+  if (lead.neighbourSold) signals.push({ label: signalStyleMap.neighbourSold.text, color: signalStyleMap.neighbourSold.color });
+  if (lead.fsboListing) signals.push({ label: signalStyleMap.fsboListing.text, color: signalStyleMap.fsboListing.color });
+  return signals;
+}
+
+function formatTimeAgo(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+  if (diffMins < 10080) return `${Math.floor(diffMins / 1440)}d ago`;
+  return `${Math.floor(diffMins / 10080)}w ago`;
+}
+
+function formatValue(salePrice?: string): string {
+  if (!salePrice) return 'Est. value unknown';
+  return `Est. ${salePrice}`;
+}
+
+function calculateCommission(salePrice?: string): string {
+  if (!salePrice) return '$0';
+  const price = parseFloat(salePrice.replace(/[$,]/g, ''));
+  const commission = price * 0.02; // 2% commission
+  return `$${Math.round(commission).toLocaleString()}`;
 }
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [hotLeads, setHotLeads] = useState<Lead[]>([]);
+  const [expiredListings, setExpiredListings] = useState<ExpiredListing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (loading) {
+  // Load dashboard data
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch dashboard metrics
+      const metricsResponse = await apiRequest<{ 
+        unLockedLeadsCount?: number;
+        mySuburbs?: { suburb: string }[];
+      }>('/lead/dashboard-matrix?isDepricated=false', 'GET');
+      
+      setMetrics({
+        unLockedLeadsCount: metricsResponse.unLockedLeadsCount || 0,
+        subscribedSuburbs: metricsResponse.mySuburbs?.length || 0,
+      });
+
+      // Fetch hot leads (top scoring)
+      const leadsResponse = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', {
+        page: 1,
+        perPage: 5,
+        sortBy: 'sellingScore',
+        sortOrder: 'desc'
+      });
+      
+      if (leadsResponse.leads) {
+        // Sort by score and take top 3
+        const sorted = [...leadsResponse.leads].sort((a, b) => (b.sellingScore || 0) - (a.sellingScore || 0));
+        setHotLeads(sorted.slice(0, 3));
+      }
+
+      // Fetch expired listings
+      const expiredResponse = await apiRequest<{ leads: ExpiredListing[] }>('/lead/expired-listings', 'POST', {
+        page: 1,
+        perPage: 5
+      });
+      
+      if (expiredResponse.leads) {
+        setExpiredListings(expiredResponse.leads.slice(0, 3));
+      }
+      
+    } catch (err) {
+      console.error('Failed to load dashboard:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      loadDashboardData();
+    }
+  }, [authLoading, user]);
+
+  if (authLoading) {
     return (
       <DemoLayout currentPage="dashboard">
         <div className="flex-1 flex items-center justify-center">
@@ -127,6 +220,7 @@ export default function DashboardPage() {
 
   const greeting = getGreeting();
   const todayDate = formatDate();
+  const topLead = hotLeads[0];
 
   return (
     <DemoLayout currentPage="dashboard">
@@ -136,13 +230,21 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {greeting}, {user?.first_name || 'John'}
+                {greeting}, {user?.first_name || 'there'}
               </h1>
               <p className="text-sm text-gray-500 mt-0.5">
                 Here's what needs your attention today
               </p>
             </div>
             <div className="flex items-center space-x-3">
+              <button
+                onClick={loadDashboardData}
+                disabled={loading}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                title="Refresh data"
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
               <div className="text-right">
                 <p className="text-xs text-gray-500">Today's Date</p>
                 <p className="text-sm font-semibold text-gray-900">{todayDate}</p>
@@ -151,50 +253,71 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button 
+              onClick={loadDashboardData}
+              className="mt-2 text-sm text-red-600 underline hover:no-underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         <div className="p-4 space-y-4">
           {/* TOP PRIORITY: Call This Person Now */}
-          <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Phone className="w-5 h-5" />
+          {loading ? (
+            <div className="bg-gradient-to-r from-gray-200 to-gray-300 rounded-2xl p-5 animate-pulse h-40" />
+          ) : topLead ? (
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-5 text-white shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-medium text-white/80">🎯 Your #1 Priority Today</span>
                 </div>
-                <span className="text-sm font-medium text-white/80">🎯 Your #1 Priority Today</span>
+                <span className="px-2.5 py-1 bg-white/20 text-white text-xs font-bold rounded-full animate-pulse">
+                  HOT LEAD
+                </span>
               </div>
-              <span className="px-2.5 py-1 bg-white/20 text-white text-xs font-bold rounded-full animate-pulse">
-                HOT LEAD
-              </span>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold mb-1">Sarah Mitchell • 42 Ocean View Dr</h2>
-                <p className="text-green-100 text-sm mb-3">Requested valuation 2 days ago • Score: 92/100</p>
-                <div className="flex items-center space-x-3 text-xs text-green-100">
-                  <span className="flex items-center space-x-1">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Valuation requested</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Mortgage free</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>12yr owner</span>
-                  </span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold mb-1">
+                    {topLead.owner1Name || 'Owner'} • {topLead.streetAddress}
+                  </h2>
+                  <p className="text-green-100 text-sm mb-3">
+                    {formatTimeAgo(topLead.updatedAt)} • Score: {topLead.sellingScore}/100
+                  </p>
+                  <div className="flex items-center space-x-3 text-xs text-green-100">
+                    {getLeadSignals(topLead).slice(0, 3).map((signal, idx) => (
+                      <span key={idx} className="flex items-center space-x-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{signal.label}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-green-100 text-xs mb-1">Est. Commission</p>
+                  <p className="text-2xl font-bold mb-3">{calculateCommission(topLead.salePrice)}</p>
+                  <button className="px-5 py-2.5 bg-white text-green-600 rounded-xl text-sm font-bold hover:bg-green-50 shadow-lg flex items-center space-x-2">
+                    <Phone className="w-4 h-4" />
+                    <span>Call Now</span>
+                  </button>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-green-100 text-xs mb-1">Est. Commission</p>
-                <p className="text-2xl font-bold mb-3">$48,000</p>
-                <button className="px-5 py-2.5 bg-white text-green-600 rounded-xl text-sm font-bold hover:bg-green-50 shadow-lg flex items-center space-x-2">
-                  <Phone className="w-4 h-4" />
-                  <span>Call Now</span>
-                </button>
-              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-gray-100 rounded-2xl p-5 text-center">
+              <p className="text-gray-500">No hot leads yet. Subscribe to suburbs to start receiving leads.</p>
+              <Link href="/settings" className="inline-block mt-3 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium">
+                Manage Suburbs
+              </Link>
+            </div>
+          )}
 
           {/* Quick Stats Row */}
           <div className="grid grid-cols-4 gap-3">
@@ -207,7 +330,9 @@ export default function DashboardPage() {
                   <Lock className="w-5 h-5 text-sky-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-sky-600">24</p>
+                  <p className="text-2xl font-bold text-sky-600">
+                    {loading ? '—' : metrics?.unLockedLeadsCount || 0}
+                  </p>
                   <p className="text-xs text-gray-500">Leads Unlocked</p>
                 </div>
               </div>
@@ -222,7 +347,9 @@ export default function DashboardPage() {
                   <MapPin className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-green-600">4</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {loading ? '—' : metrics?.subscribedSuburbs || 0}
+                  </p>
                   <p className="text-xs text-gray-500">Suburbs Subscribed</p>
                 </div>
               </div>
@@ -237,7 +364,7 @@ export default function DashboardPage() {
                   <Award className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-amber-600">#12</p>
+                  <p className="text-2xl font-bold text-amber-600">—</p>
                   <p className="text-xs text-gray-500">Leaderboard Position</p>
                 </div>
               </div>
@@ -252,7 +379,7 @@ export default function DashboardPage() {
                   <Megaphone className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-purple-600">156</p>
+                  <p className="text-2xl font-bold text-purple-600">—</p>
                   <p className="text-xs text-gray-500">Marketing Opportunities</p>
                 </div>
               </div>
@@ -276,35 +403,45 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <div className="divide-y divide-gray-50">
-                {mockHotLeads.map((lead) => (
-                  <Link
-                    key={lead.id}
-                    href={`/leads/${lead.id}`}
-                    className="block px-4 py-3 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">{lead.address}</span>
-                      <span
-                        className={`w-6 h-6 ${
-                          lead.score >= 85 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                        } rounded-full text-xs font-bold flex items-center justify-center`}
-                      >
-                        {lead.score}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500">{lead.subtitle}</p>
-                    <div className="flex items-center space-x-2 mt-2">
-                      {lead.tags.map((tag, idx) => (
+                {loading ? (
+                  <div className="px-4 py-8 text-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                  </div>
+                ) : hotLeads.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                    No leads found. Subscribe to suburbs to start receiving leads.
+                  </div>
+                ) : (
+                  hotLeads.map((lead) => (
+                    <Link
+                      key={lead._id}
+                      href={`/leads?id=${lead._id}`}
+                      className="block px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-900">{lead.streetAddress}</span>
                         <span
-                          key={idx}
-                          className={`px-1.5 py-0.5 ${getTagColorClasses(tag.color)} text-xs rounded`}
+                          className={`w-6 h-6 ${
+                            lead.sellingScore >= 85 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                          } rounded-full text-xs font-bold flex items-center justify-center`}
                         >
-                          {tag.label}
+                          {lead.sellingScore}
                         </span>
-                      ))}
-                    </div>
-                  </Link>
-                ))}
+                      </div>
+                      <p className="text-xs text-gray-500">{formatValue(lead.salePrice)} • {lead.suburb}</p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        {getLeadSignals(lead).slice(0, 2).map((signal, idx) => (
+                          <span
+                            key={idx}
+                            className={`px-1.5 py-0.5 ${getTagColorClasses(signal.color)} text-xs rounded`}
+                          >
+                            {signal.label}
+                          </span>
+                        ))}
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
 
@@ -323,29 +460,39 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <div className="divide-y divide-gray-50">
-                {mockExpiringListings.map((listing) => (
-                  <div key={listing.id} className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">{listing.address}</span>
-                      <span
-                        className={`px-2 py-0.5 ${getUrgencyColorClasses(listing.urgency)} text-xs font-medium rounded-full`}
-                      >
-                        {listing.daysLeft} days
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Listed with {listing.agent}
-                      {listing.daysOnMarket > 0 && ` • ${listing.daysOnMarket} days on market`}
-                      {listing.note && ` • ${listing.note}`}
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-gray-400">{listing.priceRange}</span>
-                      <button className="px-2 py-1 bg-red-500 text-white text-xs rounded-lg font-medium hover:bg-red-600">
-                        Contact
-                      </button>
-                    </div>
+                {loading ? (
+                  <div className="px-4 py-8 text-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
                   </div>
-                ))}
+                ) : expiredListings.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                    No expiring listings found.
+                  </div>
+                ) : (
+                  expiredListings.map((listing) => (
+                    <div key={listing._id} className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-900">{listing.streetAddress}</span>
+                        <span
+                          className={`px-2 py-0.5 ${getUrgencyColorClasses(listing.daysUntilExpiry)} text-xs font-medium rounded-full`}
+                        >
+                          {listing.daysUntilExpiry} days
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {listing.suburb}
+                        {listing.agentName && ` • Listed with ${listing.agentName}`}
+                        {listing.daysOnMarket && listing.daysOnMarket > 0 && ` • ${listing.daysOnMarket} days on market`}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-400">{listing.priceRange || 'Price TBA'}</span>
+                        <button className="px-2 py-1 bg-red-500 text-white text-xs rounded-lg font-medium hover:bg-red-600">
+                          Contact
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
