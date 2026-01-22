@@ -81,8 +81,15 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    // Handle array of error messages from API validation
+    let errorMessage = `API error: ${response.status}`;
+    if (Array.isArray(errorData.message)) {
+      errorMessage = errorData.message.map((m: any) => m.message || String(m)).join(', ');
+    } else if (typeof errorData.message === 'string') {
+      errorMessage = errorData.message;
+    }
     throw new ApiError(
-      errorData.message || `API error: ${response.status}`,
+      errorMessage,
       response.status,
       errorData
     );

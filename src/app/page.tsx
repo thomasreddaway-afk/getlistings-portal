@@ -173,9 +173,7 @@ export default function DashboardPage() {
       // Fetch hot leads (top scoring)
       const leadsResponse = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', {
         page: 1,
-        perPage: 5,
-        sortBy: 'sellingScore',
-        sortOrder: 'desc'
+        perPage: 20
       });
       
       if (leadsResponse.leads) {
@@ -203,10 +201,12 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (!authLoading && user) {
+    // Load data if we have a token (don't wait for user object)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('propdeals_token') : null;
+    if (!authLoading && token) {
       loadDashboardData();
     }
-  }, [authLoading, user]);
+  }, [authLoading]);
 
   if (authLoading) {
     return (

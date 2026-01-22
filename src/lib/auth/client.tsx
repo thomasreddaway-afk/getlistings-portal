@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
 import { User } from '@/types';
 
-const API_BASE_URL = 'https://api.prop.deals/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
 
 /**
  * Auth context value
