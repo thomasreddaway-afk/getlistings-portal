@@ -252,7 +252,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {greeting}, {user?.first_name || 'there'}
+                {greeting}, {(user as any)?.firstName || user?.first_name || 'there'}
               </h1>
               <p className="text-sm text-gray-500 mt-0.5">
                 Here's what needs your attention today

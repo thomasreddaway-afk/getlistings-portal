@@ -1,32 +1,115 @@
 'use client';
 
 import { DemoLayout } from '@/components/layout';
-import { Lock, MapPin, Users, TrendingUp, Zap, Check, Star } from 'lucide-react';
+import { apiRequest } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Lock, MapPin, Zap, Check, RefreshCw } from 'lucide-react';
 
 interface NearbySuburb {
-  id: number;
   name: string;
   state: string;
-  postcode: string;
-  leadsCount: number;
-  avgValue: string;
-  topSignal: string;
   distance: string;
-  isLocked: boolean;
+  leads: number | null;
+  price: number;
+  needsBackend: boolean;
 }
 
-const nearbySuburbs: NearbySuburb[] = [
-  { id: 1, name: 'Cremorne', state: 'NSW', postcode: '2090', leadsCount: 156, avgValue: '$1.8M', topSignal: '23 downsizers', distance: '2.1km', isLocked: true },
-  { id: 2, name: 'Neutral Bay', state: 'NSW', postcode: '2089', leadsCount: 142, avgValue: '$1.6M', topSignal: '18 empty nesters', distance: '2.4km', isLocked: true },
-  { id: 3, name: 'Kirribilli', state: 'NSW', postcode: '2061', leadsCount: 98, avgValue: '$2.1M', topSignal: '12 investors', distance: '3.2km', isLocked: true },
-  { id: 4, name: 'Waverton', state: 'NSW', postcode: '2060', leadsCount: 87, avgValue: '$1.5M', topSignal: '15 upsizers', distance: '3.8km', isLocked: true },
-  { id: 5, name: 'Wollstonecraft', state: 'NSW', postcode: '2065', leadsCount: 76, avgValue: '$1.4M', topSignal: '9 renovators', distance: '4.1km', isLocked: true },
-  { id: 6, name: 'Crows Nest', state: 'NSW', postcode: '2065', leadsCount: 134, avgValue: '$1.3M', topSignal: '21 first home', distance: '4.5km', isLocked: true },
-];
-
-const subscribedSuburbs = ['Mosman', 'Manly', 'Bondi', 'Coogee'];
+// Suburb adjacency data by state - suburbs that are typically near each other
+// This matches demo.html logic - ideally BE would provide this via geo-queries
+const SUBURB_ADJACENCY: Record<string, Record<string, string[]>> = {
+  'QLD': {
+    'Ashgrove': ['The Gap', 'Bardon', 'Enoggera', 'Alderley', 'Newmarket', 'Kelvin Grove', 'Red Hill'],
+    'Bardon': ['Ashgrove', 'Paddington', 'The Gap', 'Mount Coot-tha', 'Auchenflower', 'Toowong'],
+    'Paddington': ['Bardon', 'Red Hill', 'Milton', 'Petrie Terrace', 'Rosalie', 'Auchenflower'],
+    'Red Hill': ['Paddington', 'Ashgrove', 'Kelvin Grove', 'Herston', 'Petrie Terrace', 'Spring Hill'],
+    'The Gap': ['Ashgrove', 'Bardon', 'Enoggera', 'Keperra', 'Upper Kedron', 'Ferny Grove'],
+    'Kelvin Grove': ['Red Hill', 'Ashgrove', 'Newmarket', 'Herston', 'Spring Hill', 'Bowen Hills'],
+    'Toowong': ['Bardon', 'Auchenflower', 'Taringa', 'St Lucia', 'Indooroopilly', 'Milton'],
+    'Newmarket': ['Ashgrove', 'Alderley', 'Kelvin Grove', 'Wilston', 'Windsor', 'Grange'],
+    'default': ['Paddington', 'Red Hill', 'Milton', 'Toowong', 'Auchenflower', 'Kelvin Grove', 'Newmarket', 'Enoggera']
+  },
+  'NSW': {
+    'Bondi': ['Bondi Junction', 'Waverley', 'Bronte', 'Tamarama', 'North Bondi', 'Dover Heights'],
+    'Coogee': ['Randwick', 'Bronte', 'Maroubra', 'South Coogee', 'Clovelly', 'Kensington'],
+    'Randwick': ['Coogee', 'Kensington', 'Kingsford', 'Maroubra', 'Centennial Park', 'Moore Park'],
+    'Paddington': ['Woollahra', 'Surry Hills', 'Darlinghurst', 'Centennial Park', 'Moore Park', 'Bondi Junction'],
+    'Mosman': ['Cremorne', 'Neutral Bay', 'Balmoral', 'The Spit', 'Clifton Gardens', 'Taronga'],
+    'default': ['Randwick', 'Woollahra', 'Waverley', 'Paddington', 'Kensington', 'Maroubra', 'Clovelly', 'Bronte']
+  },
+  'VIC': {
+    'default': ['Richmond', 'South Yarra', 'Toorak', 'Prahran', 'Hawthorn', 'Kew', 'Camberwell', 'Malvern']
+  },
+  'default': {
+    'default': ['Suburb A', 'Suburb B', 'Suburb C', 'Suburb D', 'Suburb E', 'Suburb F']
+  }
+};
 
 export default function NearbyLeadsPage() {
+  const [subscribedSuburbs, setSubscribedSuburbs] = useState<{ suburb: string; state: string }[]>([]);
+  const [nearbySuburbs, setNearbySuburbs] = useState<NearbySuburb[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadNearbySuburbs = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Get user's subscribed suburbs from API
+      const response = await apiRequest<{ result?: { suburb: string; state: string }[] }>('/lead/my-suburbs-list', 'GET');
+      const userSuburbs = response.result || [];
+      setSubscribedSuburbs(userSuburbs);
+
+      if (userSuburbs.length === 0) {
+        setNearbySuburbs([]);
+        return;
+      }
+
+      // Get state from first subscribed suburb
+      const primaryState = userSuburbs[0]?.state || 'QLD';
+      const subscribedNames = new Set(userSuburbs.map(s => s.suburb.toLowerCase()));
+
+      // Find adjacent suburbs based on state
+      const stateAdjacency = SUBURB_ADJACENCY[primaryState] || SUBURB_ADJACENCY['default'];
+      const potentialNearby = new Set<string>();
+
+      // For each subscribed suburb, get its adjacent suburbs
+      userSuburbs.forEach(sub => {
+        const adjacent = stateAdjacency[sub.suburb] || stateAdjacency['default'] || [];
+        adjacent.forEach(adj => {
+          // Don't include suburbs user is already subscribed to
+          if (!subscribedNames.has(adj.toLowerCase())) {
+            potentialNearby.add(adj);
+          }
+        });
+      });
+
+      // Convert to array and limit to 6 suburbs
+      const nearbySuburbNames = Array.from(potentialNearby).slice(0, 6);
+
+      // Create nearby suburb objects
+      const nearby: NearbySuburb[] = nearbySuburbNames.map(suburbName => ({
+        name: suburbName,
+        state: primaryState,
+        distance: `Near ${userSuburbs[0]?.suburb || 'your area'}`,
+        leads: null, // null = unknown, would need BE endpoint for counts
+        price: 49,
+        needsBackend: true
+      }));
+
+      setNearbySuburbs(nearby);
+    } catch (err) {
+      console.error('Failed to load nearby suburbs:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load nearby suburbs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNearbySuburbs();
+  }, []);
+
   return (
     <DemoLayout currentPage="nearby">
       <div className="flex-1 overflow-auto bg-gray-50">
@@ -59,12 +142,16 @@ export default function NearbyLeadsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">Your subscribed suburbs:</p>
-                <p className="text-xs text-gray-600">{subscribedSuburbs.join(', ')}</p>
+                <p className="text-xs text-gray-600">
+                  {loading ? 'Loading...' : subscribedSuburbs.map(s => s.suburb).join(', ') || 'None'}
+                </p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">Subscription</p>
-              <p className="text-sm font-semibold text-sky-600">Professional Plan</p>
+              <p className="text-sm font-semibold text-sky-600">
+                {subscribedSuburbs.length} Suburb{subscribedSuburbs.length !== 1 ? 's' : ''} Plan
+              </p>
             </div>
           </div>
         </div>
@@ -80,64 +167,98 @@ export default function NearbyLeadsPage() {
               <div className="w-3 h-3 bg-sky-500 rounded-full"></div>
               <span className="text-gray-600">Subscribe to unlock leads</span>
             </div>
-            <div className="ml-auto text-xs text-gray-400">Based on your subscribed areas</div>
+            <div className="ml-auto">
+              <button
+                onClick={loadNearbySuburbs}
+                disabled={loading}
+                className="text-xs text-gray-400 hover:text-gray-600 flex items-center space-x-1"
+              >
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
         </div>
 
+        {error && (
+          <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={loadNearbySuburbs} className="mt-2 text-sm text-red-600 underline">Retry</button>
+          </div>
+        )}
+
         {/* Suburbs Grid */}
         <div className="p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {nearbySuburbs.map(suburb => (
-              <div
-                key={suburb.id}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden relative group"
-              >
-                {/* Locked Overlay */}
-                <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Lock className="w-6 h-6 text-amber-600" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-900 mb-1">Unlock {suburb.name}</p>
-                    <p className="text-xs text-gray-500 mb-3">{suburb.leadsCount} leads available</p>
-                    <button className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600">
-                      Subscribe
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold text-gray-900">{suburb.name}</h3>
-                        <span className="text-xs text-gray-400">{suburb.postcode}</span>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-500 border-t-transparent mb-4"></div>
+              <p className="text-gray-500">Finding nearby opportunities...</p>
+            </div>
+          ) : nearbySuburbs.length === 0 ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+              <p className="text-amber-700 font-medium">No nearby suburbs found</p>
+              <p className="text-amber-600 text-sm mt-1">
+                {subscribedSuburbs.length === 0 
+                  ? 'Subscribe to suburbs first to see expansion opportunities.'
+                  : 'No additional suburbs found near your subscribed areas.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {nearbySuburbs.map((suburb, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-xl border border-gray-200 overflow-hidden relative group"
+                >
+                  {/* Locked Overlay */}
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Lock className="w-6 h-6 text-amber-600" />
                       </div>
-                      <p className="text-xs text-gray-500 flex items-center mt-0.5">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        {suburb.distance} from your area
+                      <p className="text-sm font-medium text-gray-900 mb-1">Unlock {suburb.name}</p>
+                      <p className="text-xs text-gray-500 mb-1">Expand your coverage to {suburb.name}, {suburb.state}</p>
+                      <p className="text-xs text-amber-600 mb-3">
+                        {suburb.needsBackend ? '* Needs BE endpoint for lead counts' : `${suburb.leads} leads available`}
                       </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">{suburb.leadsCount}</p>
-                      <p className="text-xs text-gray-500">leads</p>
+                      <button className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600">
+                        Unlock {suburb.name} - ${suburb.price}/mo
+                      </button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="bg-gray-50 rounded-lg p-2.5">
-                      <p className="text-xs text-gray-500">Avg Value</p>
-                      <p className="text-sm font-semibold text-gray-900">{suburb.avgValue}</p>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-semibold text-gray-900">{suburb.name}</h3>
+                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">Nearby</span>
+                        </div>
+                        <p className="text-xs text-gray-500 flex items-center mt-0.5">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          {suburb.distance}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">{suburb.state}</p>
+                      </div>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-2.5">
-                      <p className="text-xs text-gray-500">Top Signal</p>
-                      <p className="text-sm font-semibold text-gray-900">{suburb.topSignal}</p>
+
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="bg-gray-50 rounded-lg p-2.5">
+                        <p className="text-xs text-gray-500">Status</p>
+                        <p className="text-sm font-semibold text-gray-400">Hidden lead</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2.5">
+                        <p className="text-xs text-gray-500">Subscribe to view</p>
+                        <p className="text-sm font-semibold text-gray-400">Hidden lead</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Upgrade CTA */}
           <div className="mt-6 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white">
@@ -156,12 +277,117 @@ export default function NearbyLeadsPage() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Check className="w-5 h-5 text-amber-200" />
-                    <span className="text-sm">AI-powered insights</span>
+                    <span className="text-sm">AI insights included</span>
                   </div>
                 </div>
               </div>
-              <button className="px-6 py-3 bg-white text-amber-600 font-bold rounded-xl hover:bg-amber-50 shadow-lg">
-                View Pricing
+              <div className="text-right">
+                <p className="text-amber-200 text-sm">Starting from</p>
+                <p className="text-3xl font-bold">$49<span className="text-lg font-normal">/suburb/mo</span></p>
+                <button className="mt-2 px-6 py-2 bg-white text-amber-600 rounded-lg text-sm font-semibold hover:bg-amber-50 transition-colors">
+                  View Packages
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Bundle Packages */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Single Suburb */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-bold text-gray-900">Single Suburb</h4>
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">Basic</span>
+              </div>
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-gray-900">$49</span>
+                <span className="text-gray-500">/mo</span>
+              </div>
+              <ul className="space-y-2 text-sm text-gray-600 mb-4">
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>1 additional suburb</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>Full lead access</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>AI insights</span>
+                </li>
+              </ul>
+              <button className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                Select Suburb
+              </button>
+            </div>
+
+            {/* 3 Suburb Bundle */}
+            <div className="bg-white rounded-xl border-2 border-blue-200 p-5 hover:shadow-lg transition-shadow relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">Popular</span>
+              </div>
+              <div className="flex items-center justify-between mb-3 mt-2">
+                <h4 className="font-bold text-gray-900">3 Suburb Bundle</h4>
+              </div>
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-gray-900">$79</span>
+                <span className="text-gray-500">/mo</span>
+                <span className="ml-2 text-sm text-green-600 font-medium">Save $68</span>
+              </div>
+              <ul className="space-y-2 text-sm text-gray-600 mb-4">
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>3 additional suburbs</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>Full lead access</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>AI insights + priority support</span>
+                </li>
+              </ul>
+              <button className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                Choose 3 Suburbs
+              </button>
+            </div>
+
+            {/* 6 Suburb Bundle */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border-2 border-amber-300 p-5 hover:shadow-lg transition-shadow relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">BEST VALUE</span>
+              </div>
+              <div className="flex items-center justify-between mb-3 mt-2">
+                <h4 className="font-bold text-gray-900">6 Suburb Bundle</h4>
+                <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded">Pro</span>
+              </div>
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-gray-900">$99</span>
+                <span className="text-gray-500">/mo</span>
+                <span className="ml-2 text-sm text-green-600 font-medium">Save $195</span>
+              </div>
+              <ul className="space-y-2 text-sm text-gray-600 mb-4">
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span><strong>All 6 nearby suburbs</strong></span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>Unlimited lead access</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>AI insights + priority support</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span>Exclusive territory protection</span>
+                </li>
+              </ul>
+              <button className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-sm font-bold hover:from-amber-600 hover:to-orange-600 transition-colors shadow-lg shadow-amber-500/25">
+                Get All 6 Suburbs
               </button>
             </div>
           </div>

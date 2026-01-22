@@ -4,69 +4,99 @@ import { DemoLayout } from '@/components/layout';
 import { apiRequest } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { RefreshCw, Phone, Mail, ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
+
+interface Suburb {
+  suburb: string;
+  state?: string;
+}
 
 interface Lead {
   _id: string;
   streetAddress: string;
+  fullAddress?: string;
   suburb: string;
+  state?: string;
+  postCode?: string;
   sellingScore: number;
   salePrice?: string;
+  estimatedValue?: number;
   owner1Name?: string;
-  phone?: string;
-  email?: string;
-  garageSale?: boolean;
-  listedForSale?: boolean;
-  requested?: boolean;
-  neighbourSold?: boolean;
-  fsboListing?: boolean;
-  updatedAt: string;
+  ownerType?: string;
   bed?: number;
   bath?: number;
   car?: number;
-  propertyType?: string;
 }
 
-const signalStyleMap: Record<string, { text: string; bg: string; color: string }> = {
-  garageSale: { text: 'Garage sale', bg: 'bg-amber-100', color: 'text-amber-700' },
-  listedForSale: { text: 'Listed for sale', bg: 'bg-green-100', color: 'text-green-700' },
-  requested: { text: 'Valuation requested', bg: 'bg-pink-100', color: 'text-pink-700' },
-  neighbourSold: { text: 'Neighbour sold', bg: 'bg-purple-100', color: 'text-purple-700' },
-  fsboListing: { text: 'FSBO', bg: 'bg-red-100', color: 'text-red-700' },
-};
-
-function getLeadSignals(lead: Lead) {
-  const signals: { text: string; bg: string; color: string }[] = [];
-  if (lead.garageSale) signals.push(signalStyleMap.garageSale);
-  if (lead.listedForSale) signals.push(signalStyleMap.listedForSale);
-  if (lead.requested) signals.push(signalStyleMap.requested);
-  if (lead.neighbourSold) signals.push(signalStyleMap.neighbourSold);
-  if (lead.fsboListing) signals.push(signalStyleMap.fsboListing);
-  return signals;
+function getScoreStyle(score: number) {
+  if (score >= 95) {
+    return {
+      border: 'border-orange-200 hover:border-orange-300',
+      badge: 'bg-orange-100 text-orange-700',
+      gradient: 'from-orange-500 to-red-500',
+      emoji: '🔥'
+    };
+  } else if (score >= 90) {
+    return {
+      border: 'border-orange-100 hover:border-orange-200',
+      badge: 'bg-orange-100 text-orange-700',
+      gradient: 'from-orange-400 to-orange-600',
+      emoji: '🔥'
+    };
+  } else if (score >= 85) {
+    return {
+      border: 'border-amber-100 hover:border-amber-200',
+      badge: 'bg-amber-100 text-amber-700',
+      gradient: 'from-amber-400 to-orange-500',
+      emoji: '🔥'
+    };
+  } else {
+    return {
+      border: 'border-gray-200 hover:border-amber-200',
+      badge: 'bg-yellow-100 text-yellow-700',
+      gradient: 'from-yellow-400 to-amber-500',
+      emoji: '⚡'
+    };
+  }
 }
 
-function formatTimeAgo(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
+function formatPrice(lead: Lead): { display: string; commission: string } {
+  // First try actual sale price
+  if (lead.salePrice && lead.salePrice !== '') {
+    const priceStr = String(lead.salePrice).replace(/[$,]/g, '');
+    const price = parseFloat(priceStr);
+    if (!isNaN(price) && price > 0) {
+      if (price >= 1000000) {
+        return {
+          display: `$${(price / 1000000).toFixed(1)}M`,
+          commission: `~$${Math.round(price * 0.025 / 1000)}K commission`
+        };
+      } else if (price >= 1000) {
+        return {
+          display: `$${Math.round(price / 1000)}K`,
+          commission: `~$${Math.round(price * 0.025 / 1000)}K commission`
+        };
+      }
+    }
+  }
   
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-  return `${Math.floor(diffMins / 1440)}d ago`;
-}
-
-function calculateCommission(salePrice?: string): string {
-  if (!salePrice) return '$0';
-  const price = parseFloat(salePrice.replace(/[$,]/g, ''));
-  const commission = price * 0.02;
-  return `$${Math.round(commission).toLocaleString()}`;
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 85) return 'bg-green-500';
-  if (score >= 70) return 'bg-yellow-500';
-  return 'bg-orange-500';
+  // Then try estimated value
+  if (lead.estimatedValue) {
+    const price = lead.estimatedValue;
+    if (price >= 1000000) {
+      return {
+        display: `~$${(price / 1000000).toFixed(1)}M`,
+        commission: `~$${Math.round(price * 0.025 / 1000)}K commission`
+      };
+    } else if (price >= 1000) {
+      return {
+        display: `~$${Math.round(price / 1000)}K`,
+        commission: `~$${Math.round(price * 0.025 / 1000)}K commission`
+      };
+    }
+  }
+  
+  return { display: 'N/A', commission: '' };
 }
 
 export default function HottestLeadsPage() {
@@ -79,18 +109,20 @@ export default function HottestLeadsPage() {
     setError(null);
     
     try {
-      // Get subscribed suburbs
-      const suburbs = await apiRequest<{ suburb: string }[]>('/lead/my-suburbs-list', 'GET');
+      // Get subscribed suburbs - returns objects with {suburb, state}
+      const suburbsResponse = await apiRequest<{ result: Suburb[] }>('/lead/my-suburbs-list', 'GET');
+      const suburbs = suburbsResponse.result || [];
       
-      // Get leads sorted by score
+      // Get leads sorted by score - send suburbs as objects like API expects
       const response = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', {
         page: 1,
         perPage: 100,
-        suburbs: suburbs?.map(s => s.suburb) || [],
+        sellingScore: { min: 0, max: 99 }, // Exclude already-listed (score 100)
+        suburbs: suburbs.map(s => ({ suburb: s.suburb, state: s.state })),
       });
       
       if (response.leads) {
-        // Sort by score and take top leads
+        // Sort by score and take top 20
         const sorted = [...response.leads].sort((a, b) => (b.sellingScore || 0) - (a.sellingScore || 0));
         setLeads(sorted.slice(0, 20));
       }
@@ -117,14 +149,10 @@ export default function HottestLeadsPage() {
               <p className="text-sm text-gray-500 mt-0.5">Your highest-scoring leads ready for action</p>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={loadHottestLeads}
-                disabled={loading}
-                className="flex items-center space-x-2 px-4 py-2 text-gray-600 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
+              <span className="flex items-center space-x-1.5 px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                <span>LIVE</span>
+              </span>
               <Link
                 href="/leads"
                 className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
@@ -144,88 +172,71 @@ export default function HottestLeadsPage() {
         )}
 
         <div className="p-4">
-          {/* Lead Cards */}
-          <div className="space-y-3">
+          {/* Lead Cards - Matching demo.html exactly */}
+          <div className="space-y-3" id="hottest-leads-list">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
                 <p className="text-gray-500">Loading hottest leads...</p>
               </div>
             ) : leads.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <p>No leads found. Subscribe to suburbs to start receiving leads.</p>
-                <Link href="/settings" className="inline-block mt-3 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium">
-                  Manage Suburbs
-                </Link>
+              <div className="bg-gray-50 rounded-xl p-8 text-center">
+                <p className="text-gray-600 font-medium">No hot leads found</p>
+                <p className="text-gray-400 text-sm mt-1">Check back later for high-scoring leads</p>
               </div>
             ) : (
-              leads.map((lead, index) => (
-                <div key={lead._id} className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-4">
-                      {/* Score Badge */}
-                      <div className="relative">
-                        <div className={`w-12 h-12 rounded-xl ${getScoreColor(lead.sellingScore)} flex items-center justify-center`}>
-                          <span className="text-white font-bold text-lg">{lead.sellingScore}</span>
-                        </div>
-                        {index < 3 && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">{index + 1}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Lead Info */}
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{lead.streetAddress}</h3>
-                        <p className="text-sm text-gray-500">{lead.suburb}</p>
-                        
-                        {/* Owner Name */}
-                        {lead.owner1Name && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            <span className="font-medium">{lead.owner1Name}</span>
-                          </p>
-                        )}
-                        
-                        {/* Signals */}
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {getLeadSignals(lead).map((signal, idx) => (
-                            <span key={idx} className={`px-2 py-0.5 text-xs rounded ${signal.bg} ${signal.color}`}>
-                              {signal.text}
-                            </span>
-                          ))}
-                        </div>
-                        
-                        {/* Property Details */}
-                        <p className="text-xs text-gray-400 mt-2">
-                          {lead.bed && `${lead.bed} bed`}
-                          {lead.bath && ` • ${lead.bath} bath`}
-                          {lead.propertyType && ` • ${lead.propertyType}`}
-                          {` • Updated ${formatTimeAgo(lead.updatedAt)}`}
-                        </p>
-                      </div>
+              leads.map((lead, index) => {
+                const rank = index + 1;
+                const score = lead.sellingScore || 0;
+                const style = getScoreStyle(score);
+                const { display: priceDisplay, commission } = formatPrice(lead);
+                
+                // Build details like demo.html
+                const details: string[] = [];
+                if (lead.suburb) {
+                  details.push(`${lead.suburb} ${lead.state || ''} ${lead.postCode || ''}`.trim());
+                }
+                if (lead.bed) details.push(`${lead.bed} bed`);
+                if (lead.bath) details.push(`${lead.bath} bath`);
+                
+                return (
+                  <div 
+                    key={lead._id}
+                    className={`bg-white rounded-xl border-2 ${style.border} p-5 cursor-pointer hover:shadow-lg transition-all flex items-center`}
+                  >
+                    {/* Rank Circle */}
+                    <div className={`flex items-center justify-center w-10 h-10 bg-gradient-to-br ${style.gradient} rounded-full text-white font-bold text-lg mr-4 flex-shrink-0`}>
+                      {rank}
                     </div>
                     
-                    {/* Right Side - Value + Actions */}
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">Est. Commission</p>
-                      <p className="text-xl font-bold text-green-600">{calculateCommission(lead.salePrice)}</p>
-                      
-                      <div className="flex items-center space-x-2 mt-3">
-                        <button className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
-                          <Phone className="w-5 h-5" />
-                        </button>
-                        <button className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
-                          <Mail className="w-5 h-5" />
-                        </button>
-                        <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-                          Contact
-                        </button>
+                    {/* Lead Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-3">
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {lead.streetAddress || lead.fullAddress || 'Unknown Address'}
+                        </h3>
+                        <span className={`px-2.5 py-1 ${style.badge} text-xs font-bold rounded-full flex-shrink-0`}>
+                          {style.emoji} {score}
+                        </span>
                       </div>
+                      <p className="text-sm text-gray-500 mt-0.5 truncate">
+                        {details.join(' • ')}
+                      </p>
                     </div>
+                    
+                    {/* Price + Commission */}
+                    <div className="text-right flex-shrink-0 ml-4">
+                      <p className="text-lg font-bold text-gray-900">{priceDisplay}</p>
+                      {commission && (
+                        <p className="text-xs text-green-600 font-medium">{commission}</p>
+                      )}
+                    </div>
+                    
+                    {/* Chevron */}
+                    <ChevronRight className="w-5 h-5 text-gray-300 ml-4 flex-shrink-0" />
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
           

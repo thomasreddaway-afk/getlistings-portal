@@ -75,16 +75,17 @@ const features = [
 ];
 
 const SoldCard = ({ property, featured = false }: { property: { image: string; commission: string; location: string; featured?: boolean }; featured?: boolean }) => (
-  <div className={`sold-card flex-shrink-0 ${featured ? 'w-64' : 'w-48'} h-32 relative rounded-xl overflow-hidden shadow-lg`}>
-    <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-      <svg className="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-    </div>
-    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+  <div className={`sold-card flex-shrink-0 w-[200px] h-[150px] relative rounded-xl overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:shadow-xl hover:z-10 group`}>
+    <img 
+      src={property.image} 
+      alt={property.location} 
+      className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+      loading="lazy"
+    />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent group-hover:from-red-600/95 group-hover:via-red-600/70 transition-all duration-300"></div>
     <div className="absolute bottom-0 left-0 right-0 p-3">
-      <p className="text-green-400 font-bold text-lg">{property.commission}</p>
-      <p className="text-white/80 text-sm">{property.location}</p>
+      <span className="inline-block bg-red-600 text-white font-bold text-xs px-2 py-1 rounded mb-1">{property.commission}</span>
+      <p className="text-white/90 text-sm">{property.location}</p>
     </div>
   </div>
 );

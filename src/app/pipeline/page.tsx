@@ -1,205 +1,320 @@
 'use client';
 
 import { DemoLayout } from '@/components/layout';
-import { useState } from 'react';
-import { Plus, MoreVertical, Phone, Mail, Calendar, DollarSign, ArrowRight, GripVertical } from 'lucide-react';
+import { useState, useRef, DragEvent } from 'react';
+import { Plus, X } from 'lucide-react';
 
-interface PipelineLead {
+interface PipelineCard {
   id: string;
-  name: string;
   address: string;
-  value: string;
-  daysInStage: number;
-  nextAction?: string;
-  phone?: string;
+  suburb: string;
+  price: string;
+  soldPrice?: string;
 }
 
 interface PipelineStage {
   id: string;
   name: string;
-  color: string;
-  leads: PipelineLead[];
+  color: 'gray' | 'blue' | 'purple' | 'green' | 'amber';
+  cards: PipelineCard[];
 }
+
+const colorClasses = {
+  gray: {
+    bg: 'bg-gray-100',
+    text: 'text-gray-700',
+    badge: 'bg-gray-200 text-gray-700',
+    border: 'border-gray-200',
+    hoverBg: 'hover:bg-gray-200',
+  },
+  blue: {
+    bg: 'bg-blue-50',
+    text: 'text-blue-700',
+    badge: 'bg-blue-100 text-blue-700',
+    border: 'border-blue-200',
+    hoverBg: 'hover:bg-blue-100',
+  },
+  purple: {
+    bg: 'bg-purple-50',
+    text: 'text-purple-700',
+    badge: 'bg-purple-100 text-purple-700',
+    border: 'border-purple-200',
+    hoverBg: 'hover:bg-purple-100',
+  },
+  green: {
+    bg: 'bg-green-50',
+    text: 'text-green-700',
+    badge: 'bg-green-100 text-green-700',
+    border: 'border-green-200',
+    hoverBg: 'hover:bg-green-100',
+  },
+  amber: {
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    badge: 'bg-amber-100 text-amber-700',
+    border: 'border-amber-200',
+    hoverBg: 'hover:bg-amber-100',
+  },
+};
 
 const initialStages: PipelineStage[] = [
   {
     id: 'new',
-    name: 'New Leads',
-    color: 'bg-blue-500',
-    leads: [
-      { id: '1', name: 'Sarah Mitchell', address: '42 Ocean View Dr', value: '$2.4M', daysInStage: 2, nextAction: 'Call to introduce' },
-      { id: '2', name: 'James Wilson', address: '78 Park Ave', value: '$1.8M', daysInStage: 1 },
-      { id: '3', name: 'Emma Thompson', address: '23 Harbour View', value: '$2.1M', daysInStage: 3 },
+    name: 'New',
+    color: 'gray',
+    cards: [
+      { id: '1', address: '42 Ocean View Dr', suburb: 'Bondi', price: '$2.4M' },
+      { id: '2', address: '89 King St', suburb: 'Sydney', price: '$850K' },
+      { id: '3', address: '12 Palm Ave', suburb: 'Manly', price: '$1.8M' },
     ],
   },
   {
     id: 'contacted',
     name: 'Contacted',
-    color: 'bg-purple-500',
-    leads: [
-      { id: '4', name: 'Michael Chen', address: '156 Beach Rd', value: '$1.65M', daysInStage: 5, nextAction: 'Follow up call' },
-      { id: '5', name: 'Lisa Anderson', address: '89 Victoria St', value: '$1.2M', daysInStage: 4 },
+    color: 'blue',
+    cards: [
+      { id: '4', address: '156 Harbour St', suburb: 'Sydney', price: '$980K' },
+      { id: '5', address: '45 Beach Rd', suburb: 'Coogee', price: '$1.2M' },
     ],
   },
   {
     id: 'appraisal',
-    name: 'Appraisal Booked',
-    color: 'bg-amber-500',
-    leads: [
-      { id: '6', name: 'David Brown', address: '34 Crown St', value: '$1.9M', daysInStage: 2, nextAction: 'Prepare CMA' },
-    ],
-  },
-  {
-    id: 'proposal',
-    name: 'Proposal Sent',
-    color: 'bg-orange-500',
-    leads: [
-      { id: '7', name: 'Jennifer Lee', address: '67 Pacific Hwy', value: '$2.2M', daysInStage: 3, nextAction: 'Follow up on proposal' },
-      { id: '8', name: 'Robert Taylor', address: '12 Sunset Blvd', value: '$1.4M', daysInStage: 7 },
+    name: 'Appraisal Set',
+    color: 'purple',
+    cards: [
+      { id: '6', address: '78 Park Ave', suburb: 'Parramatta', price: '$1.5M' },
+      { id: '7', address: '234 Rose St', suburb: 'Paddington', price: '$2.2M' },
+      { id: '8', address: '67 Station St', suburb: 'Newtown', price: '$890K' },
+      { id: '9', address: '19 Valley View', suburb: 'Mosman', price: '$3.1M' },
     ],
   },
   {
     id: 'listed',
     name: 'Listed',
-    color: 'bg-green-500',
-    leads: [
-      { id: '9', name: 'Amanda White', address: '99 Harbour St', value: '$3.1M', daysInStage: 14 },
+    color: 'green',
+    cards: [
+      { id: '10', address: '23 Beach Rd', suburb: 'Bondi', price: '$2.1M' },
+      { id: '11', address: '88 Cliff Walk', suburb: 'Vaucluse', price: '$4.5M' },
     ],
   },
   {
     id: 'sold',
-    name: 'Sold',
-    color: 'bg-emerald-600',
-    leads: [],
+    name: 'Sold 🎉',
+    color: 'amber',
+    cards: [
+      { id: '12', address: '56 Marine Pde', suburb: 'Manly', price: '$2.8M', soldPrice: '$2.95M' },
+    ],
   },
 ];
 
 export default function PipelinePage() {
-  const [stages] = useState(initialStages);
+  const [stages, setStages] = useState<PipelineStage[]>(initialStages);
+  const [draggedCard, setDraggedCard] = useState<{ card: PipelineCard; fromStage: string } | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+  const [editingStage, setEditingStage] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
 
+  // Calculate totals
+  const totalCards = stages.reduce((sum, stage) => sum + stage.cards.length, 0);
   const totalValue = stages.reduce((sum, stage) => {
-    return sum + stage.leads.reduce((stageSum, lead) => {
-      const value = parseFloat(lead.value.replace('$', '').replace('M', '')) * 1000000;
-      return stageSum + value;
+    return sum + stage.cards.reduce((cardSum, card) => {
+      const val = parseFloat(card.price.replace('$', '').replace('M', '').replace('K', ''));
+      const multiplier = card.price.includes('M') ? 1000000 : card.price.includes('K') ? 1000 : 1;
+      return cardSum + (val * multiplier);
     }, 0);
   }, 0);
 
-  const totalLeads = stages.reduce((sum, stage) => sum + stage.leads.length, 0);
+  const formatValue = (val: number) => {
+    if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
+    return `$${val}`;
+  };
+
+  // Drag handlers
+  const handleDragStart = (e: DragEvent, card: PipelineCard, stageId: string) => {
+    setDraggedCard({ card, fromStage: stageId });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: DragEvent, stageId: string) => {
+    e.preventDefault();
+    setDragOverStage(stageId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverStage(null);
+  };
+
+  const handleDrop = (e: DragEvent, toStageId: string) => {
+    e.preventDefault();
+    setDragOverStage(null);
+    
+    if (!draggedCard || draggedCard.fromStage === toStageId) {
+      setDraggedCard(null);
+      return;
+    }
+
+    setStages(prev => {
+      const newStages = prev.map(stage => {
+        if (stage.id === draggedCard.fromStage) {
+          return { ...stage, cards: stage.cards.filter(c => c.id !== draggedCard.card.id) };
+        }
+        if (stage.id === toStageId) {
+          return { ...stage, cards: [...stage.cards, draggedCard.card] };
+        }
+        return stage;
+      });
+      return newStages;
+    });
+    
+    setDraggedCard(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedCard(null);
+    setDragOverStage(null);
+  };
+
+  // Stage name editing
+  const startEditingStage = (stageId: string) => {
+    setEditingStage(stageId);
+    setTimeout(() => editInputRef.current?.focus(), 0);
+  };
+
+  const saveStageEdit = (stageId: string, newName: string) => {
+    if (newName.trim()) {
+      setStages(prev => prev.map(s => s.id === stageId ? { ...s, name: newName.trim() } : s));
+    }
+    setEditingStage(null);
+  };
+
+  // Add new stage
+  const addStage = () => {
+    const colors: Array<'gray' | 'blue' | 'purple' | 'green' | 'amber'> = ['gray', 'blue', 'purple', 'green', 'amber'];
+    const newStage: PipelineStage = {
+      id: `stage-${Date.now()}`,
+      name: 'New Stage',
+      color: colors[stages.length % colors.length],
+      cards: [],
+    };
+    setStages([...stages, newStage]);
+  };
+
+  // Delete stage
+  const deleteStage = (stageId: string) => {
+    setStages(prev => prev.filter(s => s.id !== stageId));
+  };
 
   return (
     <DemoLayout currentPage="pipeline">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 py-4 flex-shrink-0">
+        <div className="bg-white border-b border-gray-200 px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Sales Pipeline</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Track your leads through the sales process</p>
+              <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
+              <p className="text-sm text-gray-500 mt-0.5">
+                <span className="font-semibold text-gray-900">{totalCards}</span> opportunities • <span className="font-semibold text-gray-900">{formatValue(totalValue)}</span> total value
+              </p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-xs text-gray-500">Pipeline Value</p>
-                <p className="text-lg font-bold text-gray-900">${(totalValue / 1000000).toFixed(1)}M</p>
-              </div>
-              <div className="w-px h-10 bg-gray-200"></div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500">Total Leads</p>
-                <p className="text-lg font-bold text-gray-900">{totalLeads}</p>
-              </div>
-              <button className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
+              <p className="text-xs text-gray-400">💡 Drag cards between stages • Click stage name to rename</p>
+              <button
+                onClick={addStage}
+                className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+              >
                 <Plus className="w-4 h-4" />
-                <span>Add Lead</span>
+                <span>Add Stage</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Pipeline Board */}
-        <div className="flex-1 overflow-x-auto p-4 bg-gray-100">
+        <div className="flex-1 overflow-x-auto p-4">
           <div className="flex space-x-4 h-full min-w-max">
-            {stages.map(stage => (
-              <div
-                key={stage.id}
-                className="w-80 flex-shrink-0 flex flex-col bg-gray-50 rounded-xl"
-              >
-                {/* Stage Header */}
-                <div className="p-3 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 ${stage.color} rounded-full`}></div>
-                      <h3 className="font-semibold text-gray-900">{stage.name}</h3>
-                      <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">
-                        {stage.leads.length}
+            {stages.map(stage => {
+              const colors = colorClasses[stage.color];
+              
+              return (
+                <div
+                  key={stage.id}
+                  className={`w-56 ${colors.bg} rounded-lg p-3 flex flex-col group`}
+                >
+                  {/* Stage Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    {editingStage === stage.id ? (
+                      <input
+                        ref={editInputRef}
+                        type="text"
+                        defaultValue={stage.name}
+                        className={`font-semibold ${colors.text} bg-white px-2 py-1 rounded border border-gray-300 text-sm w-full mr-2`}
+                        onBlur={(e) => saveStageEdit(stage.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveStageEdit(stage.id, e.currentTarget.value);
+                          if (e.key === 'Escape') setEditingStage(null);
+                        }}
+                      />
+                    ) : (
+                      <h3
+                        className={`stage-name font-semibold ${colors.text} cursor-pointer ${colors.hoverBg} px-2 py-1 -mx-2 -my-1 rounded`}
+                        onClick={() => startEditingStage(stage.id)}
+                        title="Click to rename"
+                      >
+                        {stage.name}
+                      </h3>
+                    )}
+                    <div className="flex items-center space-x-1">
+                      <span className={`text-xs ${colors.badge} px-2 py-0.5 rounded-full`}>
+                        {stage.cards.length}
                       </span>
+                      <button
+                        onClick={() => deleteStage(stage.id)}
+                        className={`p-1 ${colors.hoverBg} rounded opacity-0 group-hover:opacity-100 transition-opacity`}
+                        title="Delete stage"
+                      >
+                        <X className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                      </button>
                     </div>
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <MoreVertical className="w-4 h-4 text-gray-400" />
-                    </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    ${stage.leads.reduce((sum, l) => sum + parseFloat(l.value.replace('$', '').replace('M', '')), 0).toFixed(1)}M value
-                  </p>
-                </div>
 
-                {/* Stage Cards */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {stage.leads.map(lead => (
-                    <div
-                      key={lead.id}
-                      className="bg-white rounded-lg border border-gray-200 p-3 hover:shadow-md transition-shadow cursor-pointer group"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">{lead.name}</p>
-                          <p className="text-xs text-gray-500">{lead.address}</p>
-                        </div>
-                        <GripVertical className="w-4 h-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {/* Drop Zone */}
+                  <div
+                    className={`space-y-2 flex-1 overflow-auto min-h-[100px] rounded-lg transition-colors ${
+                      dragOverStage === stage.id ? 'bg-blue-100 border-2 border-dashed border-blue-400' : ''
+                    }`}
+                    onDragOver={(e) => handleDragOver(e, stage.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, stage.id)}
+                  >
+                    {stage.cards.map(card => (
+                      <div
+                        key={card.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, card, stage.id)}
+                        onDragEnd={handleDragEnd}
+                        className={`bg-white rounded-lg p-3 border ${colors.border} cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow ${
+                          draggedCard?.card.id === card.id ? 'opacity-50' : ''
+                        }`}
+                      >
+                        <p className="font-medium text-sm">{card.address}</p>
+                        <p className="text-xs text-gray-500">{card.suburb}</p>
+                        <p className="text-xs text-green-600 mt-2 font-medium">{card.price}</p>
+                        {card.soldPrice && (
+                          <p className="text-xs text-amber-600 mt-1">✓ Sold for {card.soldPrice}</p>
+                        )}
                       </div>
+                    ))}
 
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-green-600">{lead.value}</span>
-                        <span className="text-xs text-gray-400">{lead.daysInStage}d in stage</span>
+                    {stage.cards.length === 0 && !dragOverStage && (
+                      <div className="text-center py-8 text-gray-400 text-xs">
+                        Drop cards here
                       </div>
-
-                      {lead.nextAction && (
-                        <div className="flex items-center space-x-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                          <Calendar className="w-3 h-3" />
-                          <span>{lead.nextAction}</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center space-x-2 mt-3 pt-2 border-t border-gray-100">
-                        <button className="flex-1 px-2 py-1.5 bg-gray-100 text-gray-600 rounded text-xs font-medium hover:bg-gray-200 flex items-center justify-center space-x-1">
-                          <Phone className="w-3 h-3" />
-                          <span>Call</span>
-                        </button>
-                        <button className="flex-1 px-2 py-1.5 bg-gray-100 text-gray-600 rounded text-xs font-medium hover:bg-gray-200 flex items-center justify-center space-x-1">
-                          <Mail className="w-3 h-3" />
-                          <span>Email</span>
-                        </button>
-                        <button className="px-2 py-1.5 bg-red-100 text-red-600 rounded text-xs font-medium hover:bg-red-200 flex items-center justify-center">
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {stage.leads.length === 0 && (
-                    <div className="text-center py-8 text-gray-400 text-sm">
-                      No leads in this stage
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-
-                {/* Add Lead Button */}
-                <div className="p-2 border-t border-gray-200">
-                  <button className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg flex items-center justify-center space-x-1">
-                    <Plus className="w-4 h-4" />
-                    <span>Add lead</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

@@ -3,7 +3,9 @@
 import { DemoLayout } from '@/components/layout';
 import { apiRequest } from '@/lib/api';
 import { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, ChevronUp, ChevronDown, Search, Filter } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { RefreshCw, ChevronUp, ChevronDown, Search, Settings } from 'lucide-react';
+import Link from 'next/link';
 
 // Types from API
 interface Lead {
@@ -86,13 +88,15 @@ function formatValue(salePrice?: string): string {
   return salePrice;
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 80) return 'bg-green-100 text-green-700';
-  if (score >= 60) return 'bg-yellow-100 text-yellow-700';
-  return 'bg-orange-100 text-orange-700';
+function getScoreStyle(score: number): { barColor: string; textColor: string } {
+  if (score >= 85) return { barColor: 'bg-green-500', textColor: 'text-green-600' };
+  if (score >= 70) return { barColor: 'bg-lime-500', textColor: 'text-lime-600' };
+  if (score >= 55) return { barColor: 'bg-yellow-500', textColor: 'text-yellow-600' };
+  return { barColor: 'bg-orange-500', textColor: 'text-orange-600' };
 }
 
 export default function LeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,10 +106,16 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSuburb, setSelectedSuburb] = useState<string>('all');
   const [scoreFilter, setScoreFilter] = useState<string>('all');
+  const [signalFilter, setSignalFilter] = useState<string>('all');
+  const [hideSoldListed, setHideSoldListed] = useState(false);
   
   // Sorting
   const [sortField, setSortField] = useState<SortField>('sellingScore');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const perPage = 50;
 
   // Load data from API
   const loadData = async () => {
@@ -113,15 +123,16 @@ export default function LeadsPage() {
     setError(null);
     
     try {
-      // Get subscribed suburbs first
-      const suburbsResponse = await apiRequest<Suburb[]>('/lead/my-suburbs-list', 'GET');
-      setSuburbs(suburbsResponse || []);
+      // Get subscribed suburbs first - returns {result: [...]}
+      const suburbsResponse = await apiRequest<{ result: Suburb[] } | Suburb[]>('/lead/my-suburbs-list', 'GET');
+      const suburbsList = Array.isArray(suburbsResponse) ? suburbsResponse : (suburbsResponse?.result || []);
+      setSuburbs(suburbsList);
       
-      // Get leads
+      // Get leads - API expects suburbs as {suburb, state} objects
       const leadsResponse = await apiRequest<{ leads: Lead[]; total: number }>('/lead/all', 'POST', {
         page: 1,
         perPage: 10000, // Load all like demo.html
-        suburbs: suburbsResponse?.map(s => s.suburb) || [],
+        suburbs: suburbsList.map(s => ({ suburb: s.suburb, state: s.state })),
       });
       
       if (leadsResponse.leads) {
@@ -162,11 +173,28 @@ export default function LeadsPage() {
     
     // Score filter
     if (scoreFilter === 'high') {
-      result = result.filter(lead => lead.sellingScore >= 80);
+      result = result.filter(lead => lead.sellingScore >= 75);
     } else if (scoreFilter === 'medium') {
-      result = result.filter(lead => lead.sellingScore >= 50 && lead.sellingScore < 80);
+      result = result.filter(lead => lead.sellingScore >= 50 && lead.sellingScore < 75);
     } else if (scoreFilter === 'low') {
-      result = result.filter(lead => lead.sellingScore < 50);
+      result = result.filter(lead => lead.sellingScore >= 10 && lead.sellingScore < 50);
+    }
+    
+    // Signal filter
+    if (signalFilter !== 'all') {
+      result = result.filter(lead => {
+        if (signalFilter === 'expiring') return lead.listedForSale; // Adjust based on actual data
+        if (signalFilter === 'listed') return lead.listedForSale;
+        if (signalFilter === 'valuation') return lead.requested;
+        if (signalFilter === 'neighbour') return lead.neighbourSold;
+        if (signalFilter === 'fsbo') return lead.fsboListing;
+        return true;
+      });
+    }
+    
+    // Hide sold & listed
+    if (hideSoldListed) {
+      result = result.filter(lead => !lead.listedForSale && !lead.recentlySold);
     }
     
     // Sort
@@ -195,7 +223,18 @@ export default function LeadsPage() {
     });
     
     return result;
-  }, [leads, searchQuery, selectedSuburb, scoreFilter, sortField, sortDirection]);
+  }, [leads, searchQuery, selectedSuburb, scoreFilter, signalFilter, hideSoldListed, sortField, sortDirection]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredLeads.length / perPage);
+  const startIndex = (currentPage - 1) * perPage;
+  const endIndex = Math.min(startIndex + perPage, filteredLeads.length);
+  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+  
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedSuburb, scoreFilter, signalFilter, hideSoldListed]);
 
   // Suburb counts for tabs
   const suburbCounts = useMemo(() => {
@@ -250,7 +289,7 @@ export default function LeadsPage() {
         </div>
 
         {/* Suburb Tabs */}
-        <div className="bg-white border-b border-gray-200 px-4 overflow-x-auto">
+        <div className="bg-white border-b border-gray-200 px-4">
           <div className="flex items-center space-x-1">
             <button
               onClick={() => setSelectedSuburb('all')}
@@ -285,37 +324,146 @@ export default function LeadsPage() {
                 </span>
               </button>
             ))}
+            <div className="flex-1"></div>
+            <Link 
+              href="/settings?section=suburbs"
+              className="flex items-center space-x-1 px-3 py-1.5 text-xs text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>Manage Suburbs</span>
+            </Link>
           </div>
         </div>
 
-        {/* Filters Row */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center space-x-4">
+        {/* Filter Row - Quick Filter Buttons */}
+        <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+            <span className="text-xs text-gray-500 font-medium mr-1">Filter:</span>
+            
+            {/* All button */}
+            <button
+              onClick={() => { setScoreFilter('all'); setSignalFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                scoreFilter === 'all' && signalFilter === 'all'
+                  ? 'bg-primary text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              All
+            </button>
+            
+            {/* Score Filters */}
+            <button
+              onClick={() => { setScoreFilter('high'); setSignalFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                scoreFilter === 'high'
+                  ? 'bg-green-100 text-green-700 border border-green-300'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50 hover:text-green-700'
+              }`}
+            >
+              75%+
+            </button>
+            <button
+              onClick={() => { setScoreFilter('medium'); setSignalFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                scoreFilter === 'medium'
+                  ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
+              }`}
+            >
+              50-75%
+            </button>
+            <button
+              onClick={() => { setScoreFilter('low'); setSignalFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                scoreFilter === 'low'
+                  ? 'bg-gray-200 text-gray-700'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              10-50%
+            </button>
+            
+            <div className="w-px h-5 bg-gray-300 mx-1"></div>
+            
+            {/* Signal Filters */}
+            <button
+              onClick={() => { setSignalFilter('expiring'); setScoreFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                signalFilter === 'expiring'
+                  ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
+              }`}
+            >
+              Expiring
+            </button>
+            <button
+              onClick={() => { setSignalFilter('listed'); setScoreFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                signalFilter === 'listed'
+                  ? 'bg-green-100 text-green-700 border border-green-300'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50 hover:text-green-700'
+              }`}
+            >
+              Listed
+            </button>
+            <button
+              onClick={() => { setSignalFilter('valuation'); setScoreFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                signalFilter === 'valuation'
+                  ? 'bg-pink-100 text-pink-700 border border-pink-300'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700'
+              }`}
+            >
+              Valuation
+            </button>
+            <button
+              onClick={() => { setSignalFilter('neighbour'); setScoreFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                signalFilter === 'neighbour'
+                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700'
+              }`}
+            >
+              Neighbour
+            </button>
+            <button
+              onClick={() => { setSignalFilter('fsbo'); setScoreFilter('all'); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                signalFilter === 'fsbo'
+                  ? 'bg-red-100 text-red-700 border border-red-300'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700'
+              }`}
+            >
+              FSBO
+            </button>
+            
+            <div className="w-px h-5 bg-gray-300 mx-1"></div>
+            
+            {/* Hide Sold & Listed Toggle */}
+            <button
+              onClick={() => setHideSoldListed(!hideSoldListed)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
+                hideSoldListed
+                  ? 'bg-gray-700 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Hide Sold & Listed
+            </button>
+            
+            <div className="flex-1"></div>
+            
             {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search by address, suburb, or owner..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-primary w-40 bg-white"
               />
-            </div>
-            
-            {/* Score Filter */}
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-400" />
-              <select
-                value={scoreFilter}
-                onChange={(e) => setScoreFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="all">All Scores</option>
-                <option value="high">High (80+)</option>
-                <option value="medium">Medium (50-79)</option>
-                <option value="low">Low (&lt;50)</option>
-              </select>
             </div>
           </div>
         </div>
@@ -334,34 +482,34 @@ export default function LeadsPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th 
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('streetAddress')}
                   >
                     Property <SortIcon field="streetAddress" />
                   </th>
                   <th 
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('suburb')}
                   >
                     Suburb <SortIcon field="suburb" />
                   </th>
                   <th 
-                    className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('sellingScore')}
                   >
-                    Score <SortIcon field="sellingScore" />
+                    AI Seller Score <SortIcon field="sellingScore" />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Signals
                   </th>
                   <th 
-                    className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('salePrice')}
                   >
-                    Est. Value <SortIcon field="salePrice" />
+                    Last Sale <SortIcon field="salePrice" />
                   </th>
                   <th 
-                    className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('updatedAt')}
                   >
                     Updated <SortIcon field="updatedAt" />
@@ -387,62 +535,107 @@ export default function LeadsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredLeads.slice(0, 100).map((lead) => (
-                    <tr key={lead._id} className="hover:bg-gray-50 cursor-pointer">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
-                            🏠
+                  paginatedLeads.map((lead) => {
+                    const scoreStyle = getScoreStyle(lead.sellingScore);
+                    return (
+                    <tr key={lead._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/properties/${lead._id}`)}>
+                      <td className="px-6 py-3">
+                        <span className="font-medium text-gray-900">{lead.streetAddress}</span>
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className="text-sm text-gray-600">{lead.suburb}</span>
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center">
+                          <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                            <div className={`${scoreStyle.barColor} h-2 rounded-full`} style={{ width: `${lead.sellingScore}%` }}></div>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{lead.streetAddress}</p>
-                            <p className="text-xs text-gray-500">
-                              {lead.bed && `${lead.bed} bed`}
-                              {lead.bath && ` • ${lead.bath} bath`}
-                              {lead.car && ` • ${lead.car} car`}
-                              {lead.propertyType && ` • ${lead.propertyType}`}
-                            </p>
-                          </div>
+                          <span className={`${scoreStyle.textColor} font-bold`}>{lead.sellingScore}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-gray-700">{lead.suburb}</span>
-                        {lead.state && <span className="text-xs text-gray-400 ml-1">{lead.state}</span>}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${getScoreColor(lead.sellingScore)}`}>
-                          {lead.sellingScore}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {getLeadSignals(lead).slice(0, 2).map((signal, idx) => (
+                          {getLeadSignals(lead).map((signal, idx) => (
                             <span key={idx} className={`px-2 py-0.5 text-xs rounded ${signal.bg} ${signal.color}`}>
                               {signal.text}
                             </span>
                           ))}
-                          {getLeadSignals(lead).length > 2 && (
-                            <span className="px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-600">
-                              +{getLeadSignals(lead).length - 2}
-                            </span>
-                          )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="text-sm font-medium text-gray-900">{formatValue(lead.salePrice)}</span>
+                      <td className="px-6 py-3">
+                        <span className="text-sm text-gray-600">{formatValue(lead.salePrice)}</span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="text-xs text-gray-500">{formatTimeAgo(lead.updatedAt)}</span>
+                      <td className="px-6 py-3">
+                        <span className="text-sm text-gray-400">{formatTimeAgo(lead.updatedAt)}</span>
                       </td>
                     </tr>
-                  ))
+                  );})
                 )}
               </tbody>
             </table>
+          </div>
+          
+          {/* Pagination Footer */}
+          <div className="mt-4 bg-white rounded-xl border border-gray-200 px-6 py-3 flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Showing {filteredLeads.length > 0 ? startIndex + 1 : 0}-{endIndex} of {filteredLeads.length.toLocaleString()} properties
+            </div>
             
-            {filteredLeads.length > 100 && (
-              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-center text-sm text-gray-500">
-                Showing 100 of {filteredLeads.length.toLocaleString()} leads. Use filters to narrow down results.
+            {totalPages > 1 && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1.5 border border-gray-200 rounded-lg text-sm ${
+                    currentPage === 1 
+                      ? 'opacity-50 cursor-not-allowed text-gray-400' 
+                      : 'hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                {(() => {
+                  const pages: (number | string)[] = [];
+                  pages.push(1);
+                  if (currentPage > 3) pages.push('...');
+                  for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+                    if (!pages.includes(i)) pages.push(i);
+                  }
+                  if (currentPage < totalPages - 2) pages.push('...');
+                  if (totalPages > 1) pages.push(totalPages);
+                  
+                  return pages.map((page, idx) => (
+                    page === '...' ? (
+                      <span key={`ellipsis-${idx}`} className="text-gray-400">...</span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page as number)}
+                        className={`px-3 py-1.5 rounded-lg text-sm ${
+                          currentPage === page
+                            ? 'bg-primary text-white'
+                            : 'border border-gray-200 hover:bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  ));
+                })()}
+                
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1.5 border border-gray-200 rounded-lg text-sm ${
+                    currentPage === totalPages 
+                      ? 'opacity-50 cursor-not-allowed text-gray-400' 
+                      : 'hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  Next
+                </button>
               </div>
             )}
           </div>

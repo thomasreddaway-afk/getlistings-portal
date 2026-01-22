@@ -15,7 +15,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
  */
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('propdeals_token');
+  // Check both possible token keys - propdeals_jwt is primary, propdeals_token is fallback
+  return localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
 }
 
 /**
