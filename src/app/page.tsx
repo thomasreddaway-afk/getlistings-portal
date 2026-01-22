@@ -92,17 +92,17 @@ function formatDate(): string {
 
 function getTagColorClasses(color: string): string {
   const colorMap: Record<string, string> = {
-    green: 'bg-green-100 text-green-700',
-    blue: 'bg-blue-100 text-blue-700',
-    amber: 'bg-amber-100 text-amber-700',
-    purple: 'bg-purple-100 text-purple-700',
-    orange: 'bg-orange-100 text-orange-700',
-    red: 'bg-red-100 text-red-700',
-    pink: 'bg-pink-100 text-pink-700',
-    cyan: 'bg-cyan-100 text-cyan-700',
-    gray: 'bg-gray-100 text-gray-700',
+    green: 'bg-green-50 text-green-600 border border-green-200',
+    blue: 'bg-blue-50 text-blue-600 border border-blue-200',
+    amber: 'bg-amber-50 text-amber-600 border border-amber-200',
+    purple: 'bg-purple-50 text-purple-600 border border-purple-200',
+    orange: 'bg-orange-50 text-orange-600 border border-orange-200',
+    red: 'bg-red-50 text-red-600 border border-red-200',
+    pink: 'bg-pink-50 text-pink-600 border border-pink-200',
+    cyan: 'bg-cyan-50 text-cyan-600 border border-cyan-200',
+    gray: 'bg-gray-50 text-gray-600 border border-gray-200',
   };
-  return colorMap[color] || 'bg-gray-100 text-gray-700';
+  return colorMap[color] || 'bg-gray-50 text-gray-600 border border-gray-200';
 }
 
 function getUrgencyColorClasses(daysLeft: number): string {
@@ -159,37 +159,59 @@ export default function DashboardPage() {
     setError(null);
     
     try {
-      // Fetch dashboard metrics
-      const metricsResponse = await apiRequest<{ 
-        unLockedLeadsCount?: number;
-        mySuburbs?: { suburb: string }[];
-      }>('/lead/dashboard-matrix?isDepricated=false', 'GET');
+      // Fetch dashboard metrics and suburbs in parallel
+      const [metricsResponse, suburbsResponse] = await Promise.all([
+        apiRequest<{ 
+          unLockedLeadsCount?: number;
+          rank?: number;
+        }>('/lead/dashboard-matrix?isDepricated=false', 'GET'),
+        apiRequest<{ 
+          result?: { suburb: string; state: string }[];
+        }>('/lead/my-suburbs-list', 'GET')
+      ]);
+      
+      // Get subscribed suburbs from the dedicated endpoint (like demo.html)
+      // Keep as objects with suburb and state for the API
+      const subscribedSuburbObjects = suburbsResponse.result || [];
       
       setMetrics({
         unLockedLeadsCount: metricsResponse.unLockedLeadsCount || 0,
-        subscribedSuburbs: metricsResponse.mySuburbs?.length || 0,
+        subscribedSuburbs: subscribedSuburbObjects.length,
+        leaderboardPosition: metricsResponse.rank,
       });
 
-      // Fetch hot leads (top scoring)
-      const leadsResponse = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', {
+      // Fetch hot leads (top scoring, excluding 100 which are already listed)
+      // Use sellingScore filter and suburbs filter like demo.html
+      const hotLeadsBody: any = {
         page: 1,
-        perPage: 20
-      });
+        perPage: 10,
+        sellingScore: { min: 0, max: 99 }
+      };
+      
+      // Filter by subscribed suburbs if available (API expects objects with suburb/state)
+      if (subscribedSuburbObjects.length > 0) {
+        hotLeadsBody.suburbs = subscribedSuburbObjects.slice(0, 4).map(s => ({
+          suburb: s.suburb,
+          state: s.state
+        }));
+      }
+      
+      const leadsResponse = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', hotLeadsBody);
       
       if (leadsResponse.leads) {
-        // Sort by score and take top 3
+        // Sort by score descending and take top 3
         const sorted = [...leadsResponse.leads].sort((a, b) => (b.sellingScore || 0) - (a.sellingScore || 0));
         setHotLeads(sorted.slice(0, 3));
       }
 
       // Fetch expired listings
-      const expiredResponse = await apiRequest<{ leads: ExpiredListing[] }>('/lead/expired-listings', 'POST', {
+      const expiredResponse = await apiRequest<{ expiredLeads: ExpiredListing[] }>('/lead/expired-listings', 'POST', {
         page: 1,
         perPage: 5
       });
       
-      if (expiredResponse.leads) {
-        setExpiredListings(expiredResponse.leads.slice(0, 3));
+      if (expiredResponse.expiredLeads) {
+        setExpiredListings(expiredResponse.expiredLeads.slice(0, 3));
       }
       
     } catch (err) {
@@ -202,7 +224,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Load data if we have a token (don't wait for user object)
-    const token = typeof window !== 'undefined' ? localStorage.getItem('propdeals_token') : null;
+    const token = typeof window !== 'undefined' ? (localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token')) : null;
     if (!authLoading && token) {
       loadDashboardData();
     }
@@ -289,7 +311,7 @@ export default function DashboardPage() {
                     {topLead.owner1Name || 'Owner'} • {topLead.streetAddress}
                   </h2>
                   <p className="text-green-100 text-sm mb-3">
-                    {formatTimeAgo(topLead.updatedAt)} • Score: {topLead.sellingScore}/100
+                    {topLead.suburb} • Score: {Math.round(topLead.sellingScore)}/100
                   </p>
                   <div className="flex items-center space-x-3 text-xs text-green-100">
                     {getLeadSignals(topLead).slice(0, 3).map((signal, idx) => (
@@ -331,7 +353,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-sky-600">
-                    {loading ? '—' : metrics?.unLockedLeadsCount || 0}
+                    {loading ? '—' : (metrics?.unLockedLeadsCount || 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500">Leads Unlocked</p>
                 </div>
@@ -364,7 +386,7 @@ export default function DashboardPage() {
                   <Award className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-amber-600">—</p>
+                  <p className="text-2xl font-bold text-amber-600">#{metrics?.leaderboardPosition?.toLocaleString() || '—'}</p>
                   <p className="text-xs text-gray-500">Leaderboard Position</p>
                 </div>
               </div>
@@ -419,16 +441,18 @@ export default function DashboardPage() {
                       className="block px-4 py-3 hover:bg-gray-50 cursor-pointer"
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-900">{lead.streetAddress}</span>
+                        <span className="text-sm font-medium text-gray-900">{lead.streetAddress}, {lead.suburb}</span>
                         <span
-                          className={`w-6 h-6 ${
-                            lead.sellingScore >= 85 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                          } rounded-full text-xs font-bold flex items-center justify-center`}
+                          className={`min-w-[28px] h-7 px-1.5 ${
+                            lead.sellingScore >= 80 ? 'bg-green-50 text-green-600 border border-green-200' : 
+                            lead.sellingScore >= 50 ? 'bg-amber-50 text-amber-600 border border-amber-200' : 
+                            'bg-gray-50 text-gray-600 border border-gray-200'
+                          } rounded-full text-xs font-semibold flex items-center justify-center`}
                         >
-                          {lead.sellingScore}
+                          {Math.round(lead.sellingScore)}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">{formatValue(lead.salePrice)} • {lead.suburb}</p>
+                      <p className="text-xs text-gray-500">{formatValue(lead.salePrice)}</p>
                       <div className="flex items-center space-x-2 mt-2">
                         {getLeadSignals(lead).slice(0, 2).map((signal, idx) => (
                           <span

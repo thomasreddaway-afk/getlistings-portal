@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount
   useEffect(() => {
-    const token = localStorage.getItem('propdeals_token');
+    const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
     const savedUser = localStorage.getItem('propdeals_user');
     
     if (token && savedUser) {
@@ -71,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(parsedUser);
       } catch (err) {
         console.error('Error parsing saved user:', err);
+        localStorage.removeItem('propdeals_jwt');
         localStorage.removeItem('propdeals_token');
         localStorage.removeItem('propdeals_user');
       }
@@ -138,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Store tokens
       if (data.accessToken) {
-        localStorage.setItem('propdeals_token', data.accessToken);
+        localStorage.setItem('propdeals_jwt', data.accessToken);
         
         if (data.refreshToken) {
           localStorage.setItem('propdeals_refresh', data.refreshToken);
@@ -167,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign out
   const signOut = useCallback(async () => {
+    localStorage.removeItem('propdeals_jwt');
     localStorage.removeItem('propdeals_token');
     localStorage.removeItem('propdeals_refresh');
     localStorage.removeItem('propdeals_user');
@@ -177,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Get stored token for API calls
   const getToken = useCallback((): string | null => {
-    return localStorage.getItem('propdeals_token');
+    return localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
   }, []);
 
   const value: AuthContextValue = {

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/client';
@@ -11,14 +12,82 @@ import { cn } from '@/lib/utils/cn';
 export function DemoSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  
+  // Try to get user from localStorage or fetch from leaderboard (same as demo.html)
+  const [localUser, setLocalUser] = React.useState<any>(null);
+  
+  React.useEffect(() => {
+    async function loadUserProfile() {
+      if (user) return; // Already have user from context
+      
+      // First try cached user from localStorage (same key as demo.html)
+      const cachedUser = localStorage.getItem('propdeals_user');
+      if (cachedUser) {
+        try {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed.firstName || parsed.name) {
+            setLocalUser(parsed);
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to parse cached user');
+        }
+      }
+      
+      // Get token - check both keys (demo uses propdeals_jwt, portal uses propdeals_token)
+      const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+      if (!token) return;
+      
+      // Fetch user profile from /user/me endpoint
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
+      try {
+        const response = await fetch(`${apiUrl}/user/me`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          console.log('User profile fetch failed:', response.status);
+          return;
+        }
+        
+        const userData = await response.json();
+        
+        if (userData && (userData.firstName || userData.lastName)) {
+          console.log('Fetched user profile:', userData.firstName, userData.lastName);
+          const userProfile = {
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+            agencyName: userData.agencyName || userData.agency || userData.businessName || '',
+            avatar: userData.profilePicture,
+            role: 'Agent'
+          };
+          localStorage.setItem('propdeals_user', JSON.stringify(userProfile));
+          setLocalUser(userProfile);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user profile:', err);
+      }
+    }
+    
+    loadUserProfile();
+  }, [user]);
+  
+  const displayUser = user || localUser;
 
   const isActive = (path: string) => pathname === path;
 
   // Get user initials
   const getInitials = () => {
-    if (!user?.first_name) return '??';
-    const first = user.first_name?.[0] || '';
-    const last = user.last_name?.[0] || '';
+    const firstName = displayUser?.first_name || displayUser?.firstName || '';
+    const lastName = displayUser?.last_name || displayUser?.lastName || '';
+    if (!firstName) return '??';
+    const first = firstName[0] || '';
+    const last = lastName[0] || '';
     return `${first}${last}`.toUpperCase();
   };
 
@@ -33,8 +102,8 @@ export function DemoSidebar() {
             </svg>
           </div>
           <div>
-            <h1 className="font-bold text-gray-900">Get Listings</h1>
-            <p className="text-sm text-gray-500">Desktop Portal</p>
+            <h1 className="font-bold text-gray-900 tracking-wider">Get Listings</h1>
+            <p className="text-sm text-gray-500 tracking-wider">Desktop Portal</p>
           </div>
         </div>
       </div>
@@ -123,10 +192,14 @@ export function DemoSidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : 'Loading...'}
+              {displayUser?.first_name || displayUser?.firstName 
+                ? `${displayUser.first_name || displayUser.firstName} ${displayUser.last_name || displayUser.lastName || ''}`.trim()
+                : 'Loading...'}
             </p>
             <p className="text-xs text-gray-500 truncate">
-              {user?.agency_name || 'Agent'}
+              {displayUser?.agency_name || displayUser?.agencyName || displayUser?.agency
+                ? `Agent • ${displayUser.agency_name || displayUser.agencyName || displayUser.agency}`
+                : 'Agent'}
             </p>
           </div>
           <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,9 +246,9 @@ function NavItem({ href, icon: Icon, active, badge, badgeColor = 'primary', chil
     <Link
       href={href}
       className={cn(
-        'w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative',
+        'w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative tracking-wider',
         active
-          ? 'bg-primary/10 text-primary'
+          ? 'bg-primary text-white'
           : 'text-gray-700 hover:bg-gray-100'
       )}
     >

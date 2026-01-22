@@ -99,15 +99,34 @@ export default function LoginPage() {
 
       // Store tokens
       if (data.accessToken) {
-        localStorage.setItem('propdeals_token', data.accessToken);
+        localStorage.setItem('propdeals_jwt', data.accessToken);
         
         if (data.refreshToken) {
           localStorage.setItem('propdeals_refresh', data.refreshToken);
         }
 
-        // Store user info if provided
+        // Store user info if provided in login response
         if (data.user) {
           localStorage.setItem('propdeals_user', JSON.stringify(data.user));
+        } else {
+          // Fetch user profile if not provided in login response
+          try {
+            const profileResponse = await fetch(`${API_BASE_URL}/user/profile`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${data.accessToken}`
+              }
+            });
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json();
+              if (profileData) {
+                localStorage.setItem('propdeals_user', JSON.stringify(profileData));
+              }
+            }
+          } catch (profileErr) {
+            console.error('Failed to fetch user profile:', profileErr);
+          }
         }
 
         // Successful login - redirect to dashboard

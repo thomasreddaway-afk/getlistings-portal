@@ -67,6 +67,7 @@ export async function apiRequest<T>(
 
   if (response.status === 401) {
     // Token expired or invalid
+    localStorage.removeItem('propdeals_jwt');
     localStorage.removeItem('propdeals_token');
     localStorage.removeItem('propdeals_refresh');
     localStorage.removeItem('propdeals_user');
