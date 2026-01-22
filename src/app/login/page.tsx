@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 // API Base URL for prop.deals - configurable via env var for local testing
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.prop.deals/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
 
 type AuthStep = 'phone' | 'code' | 'loading';
 

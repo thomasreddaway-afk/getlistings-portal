@@ -8,7 +8,7 @@
  * For local testing: NEXT_PUBLIC_API_URL=http://localhost:3200/v1
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.prop.deals/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
 
 /**
  * Get the stored auth token
