@@ -154,9 +154,9 @@ const marketingItems: NavItem[] = [
 ];
 
 const insightsItems: NavItem[] = [
-  { name: 'Analytics', href: '/analytics', icon: <AnalyticsIcon /> },
+  { name: 'Analytics', href: '/analytics', icon: <AnalyticsIcon />, badge: 'Soon', badgeColor: 'bg-gray-400' },
   { name: 'Leaderboard', href: '/leaderboard', icon: <LeaderboardIcon /> },
-  { name: 'Competitor Analysis', href: '/competitor-analysis', icon: <CompetitorIcon />, badge: 'New', badgeColor: 'bg-gradient-to-r from-emerald-500 to-teal-500' },
+  { name: 'Competitor Analysis', href: '/competitor-analysis', icon: <CompetitorIcon />, badge: 'Soon', badgeColor: 'bg-gray-400' },
 ];
 
 const growthItems: NavItem[] = [
