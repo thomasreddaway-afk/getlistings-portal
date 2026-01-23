@@ -186,10 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('propdeals_token');
     localStorage.removeItem('propdeals_refresh');
     localStorage.removeItem('propdeals_user');
-    
-    // Clear auth cookie
-    document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    
     setUser(null);
     setPendingPhoneNumber(null);
     setError(null);
