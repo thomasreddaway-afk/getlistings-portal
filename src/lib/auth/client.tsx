@@ -69,11 +69,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
+        
+        // Set cookie for middleware authentication check if not already set
+        // Cookie expires in 30 days
+        const expires = new Date();
+        expires.setTime(expires.getTime() + 30 * 24 * 60 * 60 * 1000);
+        document.cookie = `auth-token=${token}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
       } catch (err) {
         console.error('Error parsing saved user:', err);
         localStorage.removeItem('propdeals_jwt');
         localStorage.removeItem('propdeals_token');
         localStorage.removeItem('propdeals_user');
+        // Clear cookie on error
+        document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       }
     }
     
@@ -141,6 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.accessToken) {
         localStorage.setItem('propdeals_jwt', data.accessToken);
         
+        // Set cookie for middleware authentication check
+        // Cookie expires in 30 days
+        const expires = new Date();
+        expires.setTime(expires.getTime() + 30 * 24 * 60 * 60 * 1000);
+        document.cookie = `auth-token=${data.accessToken}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+        
         if (data.refreshToken) {
           localStorage.setItem('propdeals_refresh', data.refreshToken);
         }
@@ -172,6 +186,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('propdeals_token');
     localStorage.removeItem('propdeals_refresh');
     localStorage.removeItem('propdeals_user');
+    
+    // Clear auth cookie
+    document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    
     setUser(null);
     setPendingPhoneNumber(null);
     setError(null);

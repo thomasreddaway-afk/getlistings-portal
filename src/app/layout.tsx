@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
 import { AuthProvider } from '@/lib/auth/client';
 import { Providers } from './providers';
@@ -8,7 +8,11 @@ export const metadata: Metadata = {
   description: 'AI-powered seller predictions for real estate agents',
   keywords: ['real estate', 'seller predictions', 'listings', 'AI'],
   authors: [{ name: 'Get Listings' }],
-  viewport: 'width=device-width, initial-scale=1',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
   themeColor: '#c8102e',
 };
 

@@ -184,6 +184,12 @@ export default function LoginPage() {
           localStorage.setItem('propdeals_refresh', data.refreshToken);
         }
 
+        // Set cookie for middleware authentication check
+        // Cookie expires in 30 days
+        const expires = new Date();
+        expires.setTime(expires.getTime() + 30 * 24 * 60 * 60 * 1000);
+        document.cookie = `auth-token=${data.accessToken}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+
         // Store user data if provided
         if (data.user) {
           localStorage.setItem('propdeals_user', JSON.stringify(data.user));
