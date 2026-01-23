@@ -184,6 +184,9 @@ export default function LoginPage() {
           localStorage.setItem('propdeals_refresh', data.refreshToken);
         }
 
+        // Set auth cookie for middleware (expires in 7 days)
+        document.cookie = `auth-token=${data.accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+
         // Store user data if provided
         if (data.user) {
           localStorage.setItem('propdeals_user', JSON.stringify(data.user));
