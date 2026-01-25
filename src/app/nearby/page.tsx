@@ -49,8 +49,11 @@ export default function NearbyLeadsPage() {
   const [nearbySuburbs, setNearbySuburbs] = useState<NearbySuburb[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   const loadNearbySuburbs = async () => {
+    if (hasLoadedData) return; // Prevent duplicate API calls
+    setHasLoadedData(true);
     setLoading(true);
     setError(null);
 

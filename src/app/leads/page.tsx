@@ -101,6 +101,7 @@ export default function LeadsPage() {
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,6 +120,8 @@ export default function LeadsPage() {
 
   // Load data from API
   const loadData = async () => {
+    if (hasLoadedData) return; // Prevent duplicate API calls
+    setHasLoadedData(true);
     setLoading(true);
     setError(null);
     

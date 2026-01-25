@@ -103,8 +103,11 @@ export default function HottestLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   const loadHottestLeads = async () => {
+    if (hasLoadedData) return; // Prevent duplicate API calls
+    setHasLoadedData(true);
     setLoading(true);
     setError(null);
     

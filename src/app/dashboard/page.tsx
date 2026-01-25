@@ -152,9 +152,12 @@ export default function DashboardPage() {
   const [expiredListings, setExpiredListings] = useState<ExpiredListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   // Load dashboard data
   const loadDashboardData = async () => {
+    if (hasLoadedData) return; // Prevent duplicate API calls
+    setHasLoadedData(true);
     setLoading(true);
     setError(null);
     
