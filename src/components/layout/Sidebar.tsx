@@ -156,7 +156,7 @@ const marketingItems: NavItem[] = [
 const insightsItems: NavItem[] = [
   { name: 'Analytics', href: '/analytics', icon: <AnalyticsIcon />, badge: 'Soon', badgeColor: 'bg-gray-400' },
   { name: 'Leaderboard', href: '/leaderboard', icon: <LeaderboardIcon /> },
-  { name: 'Competitor Analysis', href: '/competitor-analysis', icon: <CompetitorIcon />, badge: 'Soon', badgeColor: 'bg-gray-400' },
+  { name: 'Competitor Analysis', href: '/competitor-analysis', icon: <CompetitorIcon /> },
 ];
 
 const growthItems: NavItem[] = [

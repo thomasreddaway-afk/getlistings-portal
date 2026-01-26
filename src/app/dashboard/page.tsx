@@ -58,10 +58,9 @@ interface ExpiredListing {
   _id: string;
   streetAddress: string;
   suburb: string;
-  daysUntilExpiry: number;
+  totalDaysInMarket?: number;
   agentName?: string;
-  daysOnMarket?: number;
-  priceRange?: string;
+  salePrice?: string;
   note?: string;
 }
 
@@ -105,10 +104,12 @@ function getTagColorClasses(color: string): string {
   return colorMap[color] || 'bg-gray-50 text-gray-600 border border-gray-200';
 }
 
-function getUrgencyColorClasses(daysLeft: number): string {
-  if (daysLeft <= 3) return 'bg-red-100 text-red-700';
-  if (daysLeft <= 7) return 'bg-orange-100 text-orange-700';
-  return 'bg-amber-100 text-amber-700';
+function getUrgencyColorClasses(daysOnMarket: number | undefined): string {
+  const days = daysOnMarket ?? 0;
+  if (days > 365) return 'bg-red-100 text-red-700';
+  if (days > 180) return 'bg-orange-100 text-orange-700';
+  if (days > 90) return 'bg-amber-100 text-amber-700';
+  return 'bg-green-100 text-green-700';
 }
 
 function getLeadSignals(lead: Lead) {
@@ -145,84 +146,142 @@ function calculateCommission(salePrice?: string): string {
   return `$${Math.round(commission).toLocaleString()}`;
 }
 
+// Cache keys for localStorage
+const CACHE_KEYS = {
+  metrics: 'gl_cache_dashboard_metrics',
+  hotLeads: 'gl_cache_dashboard_hotleads',
+  expiredListings: 'gl_cache_dashboard_expired',
+  timestamp: 'gl_cache_dashboard_ts',
+};
+
+// Cache duration: 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000;
+
+// Module-level flag to prevent duplicate API calls (survives hot reload)
+let dashboardLoadingPromise: Promise<void> | null = null;
+
+function getCachedData<T>(key: string): T | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = localStorage.getItem(key);
+    const timestamp = localStorage.getItem(CACHE_KEYS.timestamp);
+    if (cached && timestamp) {
+      const age = Date.now() - parseInt(timestamp, 10);
+      if (age < CACHE_DURATION) {
+        return JSON.parse(cached);
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+function setCachedData(key: string, data: unknown): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(CACHE_KEYS.timestamp, Date.now().toString());
+  } catch (e) {}
+}
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [hotLeads, setHotLeads] = useState<Lead[]>([]);
-  const [expiredListings, setExpiredListings] = useState<ExpiredListing[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedMetrics = getCachedData<DashboardMetrics>(CACHE_KEYS.metrics);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(cachedMetrics);
+  const [hotLeads, setHotLeads] = useState<Lead[]>(() => getCachedData(CACHE_KEYS.hotLeads) || []);
+  const [expiredListings, setExpiredListings] = useState<ExpiredListing[]>(() => getCachedData(CACHE_KEYS.expiredListings) || []);
+  const [loading, setLoading] = useState(!cachedMetrics); // Only show loading if no cache
   const [error, setError] = useState<string | null>(null);
-  const [hasLoadedData, setHasLoadedData] = useState(false);
 
-  // Load dashboard data
+  // Load dashboard data - uses module-level promise to prevent duplicate calls
   const loadDashboardData = async () => {
-    if (hasLoadedData) return; // Prevent duplicate API calls
-    setHasLoadedData(true);
-    setLoading(true);
+    // If already loading, wait for existing request
+    if (dashboardLoadingPromise) {
+      await dashboardLoadingPromise;
+      return;
+    }
+    
+    // Only show loading spinner if we don't have cached data
+    if (!cachedMetrics) {
+      setLoading(true);
+    }
     setError(null);
     
-    try {
-      // Fetch dashboard metrics and suburbs in parallel
-      const [metricsResponse, suburbsResponse] = await Promise.all([
-        apiRequest<{ 
-          unLockedLeadsCount?: number;
-          rank?: number;
-        }>('/lead/dashboard-matrix?isDepricated=false', 'GET'),
-        apiRequest<{ 
-          result?: { suburb: string; state: string }[];
-        }>('/lead/my-suburbs-list', 'GET')
-      ]);
+    // Create the loading promise
+    dashboardLoadingPromise = (async () => {
+      try {
+        // Fetch dashboard metrics and suburbs in parallel
+        const [metricsResponse, suburbsResponse] = await Promise.all([
+          apiRequest<{ 
+            unLockedLeadsCount?: number;
+            rank?: number;
+          }>('/lead/dashboard-matrix?isDepricated=false', 'GET'),
+          apiRequest<{ 
+            result?: { suburb: string; state: string }[];
+          }>('/lead/my-suburbs-list', 'GET')
+        ]);
+        
+        // Get subscribed suburbs from the dedicated endpoint (like demo.html)
+        // Keep as objects with suburb and state for the API
+        const subscribedSuburbObjects = suburbsResponse.result || [];
       
-      // Get subscribed suburbs from the dedicated endpoint (like demo.html)
-      // Keep as objects with suburb and state for the API
-      const subscribedSuburbObjects = suburbsResponse.result || [];
-      
-      setMetrics({
-        unLockedLeadsCount: metricsResponse.unLockedLeadsCount || 0,
-        subscribedSuburbs: subscribedSuburbObjects.length,
-        leaderboardPosition: metricsResponse.rank,
-      });
+        const newMetrics = {
+          unLockedLeadsCount: metricsResponse.unLockedLeadsCount || 0,
+          subscribedSuburbs: subscribedSuburbObjects.length,
+          leaderboardPosition: metricsResponse.rank,
+        };
+        setMetrics(newMetrics);
+        setCachedData(CACHE_KEYS.metrics, newMetrics);
 
-      // Fetch hot leads (top scoring, excluding 100 which are already listed)
-      // Use sellingScore filter and suburbs filter like demo.html
-      const hotLeadsBody: any = {
-        page: 1,
-        perPage: 10,
-        sellingScore: { min: 0, max: 99 }
-      };
-      
-      // Filter by subscribed suburbs if available (API expects objects with suburb/state)
-      if (subscribedSuburbObjects.length > 0) {
-        hotLeadsBody.suburbs = subscribedSuburbObjects.slice(0, 4).map(s => ({
-          suburb: s.suburb,
-          state: s.state
-        }));
-      }
-      
-      const leadsResponse = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', hotLeadsBody);
-      
-      if (leadsResponse.leads) {
-        // Sort by score descending and take top 3
-        const sorted = [...leadsResponse.leads].sort((a, b) => (b.sellingScore || 0) - (a.sellingScore || 0));
-        setHotLeads(sorted.slice(0, 3));
-      }
+        // Fetch hot leads (top scoring, excluding 100 which are already listed)
+        // Use sellingScore filter and suburbs filter like demo.html
+        const hotLeadsBody: any = {
+          page: 1,
+          perPage: 10,
+          sellingScore: { min: 0, max: 99 }
+        };
+        
+        // Filter by subscribed suburbs if available (API expects objects with suburb/state)
+        if (subscribedSuburbObjects.length > 0) {
+          hotLeadsBody.suburbs = subscribedSuburbObjects.slice(0, 4).map(s => ({
+            suburb: s.suburb,
+            state: s.state
+          }));
+        }
+        
+        const leadsResponse = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', hotLeadsBody);
+        
+        if (leadsResponse.leads) {
+          // Sort by score descending and take top 3
+          const sorted = [...leadsResponse.leads].sort((a, b) => (b.sellingScore || 0) - (a.sellingScore || 0));
+          const topLeads = sorted.slice(0, 3);
+          setHotLeads(topLeads);
+          setCachedData(CACHE_KEYS.hotLeads, topLeads);
+        }
 
-      // Fetch expired listings
-      const expiredResponse = await apiRequest<{ expiredLeads: ExpiredListing[] }>('/lead/expired-listings', 'POST', {
-        page: 1,
-        perPage: 5
-      });
-      
-      if (expiredResponse.expiredLeads) {
-        setExpiredListings(expiredResponse.expiredLeads.slice(0, 3));
+        // Fetch expired listings
+        const expiredResponse = await apiRequest<{ expiredLeads: ExpiredListing[] }>('/lead/expired-listings', 'POST', {
+          page: 1,
+          perPage: 5
+        });
+        
+        if (expiredResponse.expiredLeads) {
+          const expired = expiredResponse.expiredLeads.slice(0, 3).map((listing: any) => ({
+            ...listing,
+            totalDaysInMarket: listing.totalDaysInMarket || 0,
+          }));
+          setExpiredListings(expired);
+          setCachedData(CACHE_KEYS.expiredListings, expired);
+        }
+      } catch (err) {
+        console.error('Failed to load dashboard:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      } finally {
+        setLoading(false);
+        dashboardLoadingPromise = null; // Reset for next navigation
       }
-      
-    } catch (err) {
-      console.error('Failed to load dashboard:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-    } finally {
-      setLoading(false);
-    }
+    })();
+    
+    await dashboardLoadingPromise;
   };
 
   useEffect(() => {
@@ -440,7 +499,7 @@ export default function DashboardPage() {
                   hotLeads.map((lead) => (
                     <Link
                       key={lead._id}
-                      href={`/leads?id=${lead._id}`}
+                      href={`/properties/${lead._id}`}
                       className="block px-4 py-3 hover:bg-gray-50 cursor-pointer"
                     >
                       <div className="flex items-center justify-between mb-1">
@@ -497,27 +556,23 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   expiredListings.map((listing) => (
-                    <div key={listing._id} className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                    <Link key={listing._id} href={`/properties/${listing._id}`} className="block px-4 py-3 hover:bg-gray-50 cursor-pointer">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-medium text-gray-900">{listing.streetAddress}</span>
                         <span
-                          className={`px-2 py-0.5 ${getUrgencyColorClasses(listing.daysUntilExpiry)} text-xs font-medium rounded-full`}
+                          className={`px-2 py-0.5 ${getUrgencyColorClasses(listing.totalDaysInMarket)} text-xs font-medium rounded-full`}
                         >
-                          {listing.daysUntilExpiry} days
+                          {listing.totalDaysInMarket ?? 0} days
                         </span>
                       </div>
                       <p className="text-xs text-gray-500">
                         {listing.suburb}
                         {listing.agentName && ` • Listed with ${listing.agentName}`}
-                        {listing.daysOnMarket && listing.daysOnMarket > 0 && ` • ${listing.daysOnMarket} days on market`}
                       </p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-gray-400">{listing.priceRange || 'Price TBA'}</span>
-                        <button className="px-2 py-1 bg-red-500 text-white text-xs rounded-lg font-medium hover:bg-red-600">
-                          Contact
-                        </button>
+                      <div className="flex items-center mt-2">
+                        <span className="text-xs text-gray-400">{listing.salePrice || 'Price TBA'}</span>
                       </div>
-                    </div>
+                    </Link>
                   ))
                 )}
               </div>

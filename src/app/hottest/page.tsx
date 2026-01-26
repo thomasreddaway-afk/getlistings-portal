@@ -4,7 +4,7 @@ import { DemoLayout } from '@/components/layout';
 import { apiRequest } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronRight, Loader2 } from 'lucide-react';
 
 interface Suburb {
   suburb: string;
@@ -60,7 +60,7 @@ function getScoreStyle(score: number) {
   }
 }
 
-function formatPrice(lead: Lead): { display: string; commission: string } {
+function formatPrice(lead: Lead): { display: string; commission: string; hasValue: boolean } {
   // First try actual sale price
   if (lead.salePrice && lead.salePrice !== '') {
     const priceStr = String(lead.salePrice).replace(/[$,]/g, '');
@@ -69,12 +69,14 @@ function formatPrice(lead: Lead): { display: string; commission: string } {
       if (price >= 1000000) {
         return {
           display: `$${(price / 1000000).toFixed(1)}M`,
-          commission: `~$${Math.round(price * 0.025 / 1000)}K commission`
+          commission: `~$${Math.round(price * 0.025 / 1000)}K commission`,
+          hasValue: true
         };
       } else if (price >= 1000) {
         return {
           display: `$${Math.round(price / 1000)}K`,
-          commission: `~$${Math.round(price * 0.025 / 1000)}K commission`
+          commission: `~$${Math.round(price * 0.025 / 1000)}K commission`,
+          hasValue: true
         };
       }
     }
@@ -86,61 +88,109 @@ function formatPrice(lead: Lead): { display: string; commission: string } {
     if (price >= 1000000) {
       return {
         display: `~$${(price / 1000000).toFixed(1)}M`,
-        commission: `~$${Math.round(price * 0.025 / 1000)}K commission`
+        commission: `~$${Math.round(price * 0.025 / 1000)}K commission`,
+        hasValue: true
       };
     } else if (price >= 1000) {
       return {
         display: `~$${Math.round(price / 1000)}K`,
-        commission: `~$${Math.round(price * 0.025 / 1000)}K commission`
+        commission: `~$${Math.round(price * 0.025 / 1000)}K commission`,
+        hasValue: true
       };
     }
   }
   
-  return { display: 'N/A', commission: '' };
+  return { display: '', commission: '', hasValue: false };
+}
+
+// Cache for hottest leads - shared across page visits
+const HOTTEST_CACHE_KEY = 'gl_cache_hottest_leads';
+const HOTTEST_CACHE_TS_KEY = 'gl_cache_hottest_ts';
+const HOTTEST_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+function getCachedHottestLeads(): Lead[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const ts = localStorage.getItem(HOTTEST_CACHE_TS_KEY);
+    if (ts && Date.now() - parseInt(ts, 10) < HOTTEST_CACHE_DURATION) {
+      const cached = localStorage.getItem(HOTTEST_CACHE_KEY);
+      if (cached) return JSON.parse(cached);
+    }
+  } catch (e) {}
+  return null;
+}
+
+function setCachedHottestLeads(leads: Lead[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(HOTTEST_CACHE_KEY, JSON.stringify(leads));
+    localStorage.setItem(HOTTEST_CACHE_TS_KEY, Date.now().toString());
+  } catch (e) {}
 }
 
 export default function HottestLeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Check cache on initial render - must be inside component for SSR safety
+  const [cachedLeads] = useState<Lead[] | null>(() => getCachedHottestLeads());
+  
+  const [leads, setLeads] = useState<Lead[]>(cachedLeads || []);
+  const [loading, setLoading] = useState(!cachedLeads || cachedLeads.length === 0);
+  const [loadingFresh, setLoadingFresh] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasLoadedData, setHasLoadedData] = useState(false);
 
-  const loadHottestLeads = async () => {
-    if (hasLoadedData) return; // Prevent duplicate API calls
-    setHasLoadedData(true);
-    setLoading(true);
+  const loadHottestLeads = async (isRefresh = false) => {
+    if (isRefresh) {
+      setLoadingFresh(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     
     try {
-      // Get subscribed suburbs - returns objects with {suburb, state}
+      // Get subscribed suburbs first (fast)
       const suburbsResponse = await apiRequest<{ result: Suburb[] }>('/lead/my-suburbs-list', 'GET');
       const suburbs = suburbsResponse.result || [];
       
-      // Get leads sorted by score - send suburbs as objects like API expects
+      if (suburbs.length === 0) {
+        setLeads([]);
+        setLoading(false);
+        setLoadingFresh(false);
+        return;
+      }
+      
+      // Get top 15 leads sorted by score (any score from 0-99, just the highest ones)
+      // Exclude 100 which means already listed/sold
       const response = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', {
         page: 1,
-        perPage: 100,
-        sellingScore: { min: 0, max: 99 }, // Exclude already-listed (score 100)
+        perPage: 15, // Only need top 15
+        sellingScore: { min: 0, max: 99 }, // All scores under 100 (exclude already listed)
         suburbs: suburbs.map(s => ({ suburb: s.suburb, state: s.state })),
       });
       
       if (response.leads) {
-        // Sort by score and take top 20
+        // Sort by score descending (API should return sorted, but ensure it)
         const sorted = [...response.leads].sort((a, b) => (b.sellingScore || 0) - (a.sellingScore || 0));
-        setLeads(sorted.slice(0, 20));
+        setLeads(sorted);
+        setCachedHottestLeads(sorted); // Cache for next visit
       }
     } catch (err) {
       console.error('Failed to load hottest leads:', err);
       setError(err instanceof Error ? err.message : 'Failed to load leads');
     } finally {
       setLoading(false);
+      setLoadingFresh(false);
     }
   };
 
   useEffect(() => {
-    loadHottestLeads();
+    // If we have cached data, show it immediately then refresh in background
+    if (cachedLeads && cachedLeads.length > 0) {
+      // Refresh in background
+      loadHottestLeads(true);
+    } else {
+      // No cache, load fresh
+      loadHottestLeads(false);
+    }
   }, []);
-
   return (
     <DemoLayout currentPage="hottest">
       <div className="flex-1 overflow-auto bg-gray-50">
@@ -152,10 +202,17 @@ export default function HottestLeadsPage() {
               <p className="text-sm text-gray-500 mt-0.5">Your highest-scoring leads ready for action</p>
             </div>
             <div className="flex items-center space-x-3">
-              <span className="flex items-center space-x-1.5 px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                <span>LIVE</span>
-              </span>
+              {loadingFresh ? (
+                <span className="flex items-center space-x-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Updating...</span>
+                </span>
+              ) : (
+                <span className="flex items-center space-x-1.5 px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                  <span>LIVE</span>
+                </span>
+              )}
               <Link
                 href="/leads"
                 className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
@@ -170,7 +227,7 @@ export default function HottestLeadsPage() {
         {error && (
           <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-700 text-sm">{error}</p>
-            <button onClick={loadHottestLeads} className="mt-2 text-sm text-red-600 underline">Retry</button>
+            <button onClick={() => loadHottestLeads(false)} className="mt-2 text-sm text-red-600 underline">Retry</button>
           </div>
         )}
 
@@ -192,7 +249,7 @@ export default function HottestLeadsPage() {
                 const rank = index + 1;
                 const score = lead.sellingScore || 0;
                 const style = getScoreStyle(score);
-                const { display: priceDisplay, commission } = formatPrice(lead);
+                const { display: priceDisplay, commission, hasValue } = formatPrice(lead);
                 
                 // Build details like demo.html
                 const details: string[] = [];
@@ -203,10 +260,12 @@ export default function HottestLeadsPage() {
                 if (lead.bath) details.push(`${lead.bath} bath`);
                 
                 return (
-                  <div 
+                  <Link 
                     key={lead._id}
-                    className={`bg-white rounded-xl border-2 ${style.border} p-5 cursor-pointer hover:shadow-lg transition-all flex items-center`}
+                    href={`/properties/${lead._id}`}
+                    className={`block bg-white rounded-xl border-2 ${style.border} p-5 cursor-pointer hover:shadow-lg transition-all`}
                   >
+                    <div className="flex items-center">
                     {/* Rank Circle */}
                     <div className={`flex items-center justify-center w-10 h-10 bg-gradient-to-br ${style.gradient} rounded-full text-white font-bold text-lg mr-4 flex-shrink-0`}>
                       {rank}
@@ -228,16 +287,23 @@ export default function HottestLeadsPage() {
                     </div>
                     
                     {/* Price + Commission */}
-                    <div className="text-right flex-shrink-0 ml-4">
-                      <p className="text-lg font-bold text-gray-900">{priceDisplay}</p>
-                      {commission && (
-                        <p className="text-xs text-green-600 font-medium">{commission}</p>
+                    <div className="text-right flex-shrink-0 ml-4 min-w-[100px]">
+                      {hasValue ? (
+                        <>
+                          <p className="text-lg font-bold text-gray-900">{priceDisplay}</p>
+                          {commission && (
+                            <p className="text-xs text-green-600 font-medium">{commission}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-400">—</p>
                       )}
                     </div>
                     
                     {/* Chevron */}
                     <ChevronRight className="w-5 h-5 text-gray-300 ml-4 flex-shrink-0" />
-                  </div>
+                    </div>
+                  </Link>
                 );
               })
             )}

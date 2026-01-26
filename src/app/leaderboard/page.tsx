@@ -2,7 +2,7 @@
 
 import { DemoLayout } from '@/components/layout';
 import { useState, useEffect } from 'react';
-import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 interface LeaderboardEntry {
   _id: string;
@@ -14,20 +14,64 @@ interface LeaderboardEntry {
   agencyName?: string;
 }
 
+// Cache helpers - 2 minute expiry for quick navigation between tabs
+const CACHE_KEY = 'gl_cache_leaderboard';
+const CACHE_EXPIRY_MS = 2 * 60 * 1000; // 2 minutes
+
+interface CachedData {
+  entries: LeaderboardEntry[];
+  total: number;
+  numberOfPages: number;
+  timestamp: number;
+}
+
+function getCachedLeaderboard(): CachedData | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+    const data = JSON.parse(cached) as CachedData;
+    const age = Date.now() - data.timestamp;
+    if (age > CACHE_EXPIRY_MS) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedLeaderboard(entries: LeaderboardEntry[], total: number, numberOfPages: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const data: CachedData = { entries, total, numberOfPages, timestamp: Date.now() };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // Storage full or unavailable
+  }
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
 
 export default function LeaderboardPage() {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Check cache on initial render - must be inside component to work with SSR
+  const [cachedData] = useState<CachedData | null>(() => getCachedLeaderboard());
+  
+  const [entries, setEntries] = useState<LeaderboardEntry[]>(cachedData?.entries || []);
+  const [loading, setLoading] = useState(!cachedData);
+  const [loadingFresh, setLoadingFresh] = useState(!!cachedData); // Background refresh indicator
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [numberOfPages, setNumberOfPages] = useState(1);
+  const [total, setTotal] = useState(cachedData?.total || 0);
+  const [numberOfPages, setNumberOfPages] = useState(cachedData?.numberOfPages || 1);
   const [period, setPeriod] = useState('this-month');
   const perPage = 20;
 
-  const loadLeaderboard = async (pageNum = 1) => {
-    setLoading(true);
+  const loadLeaderboard = async (pageNum = 1, isBackgroundRefresh = false) => {
+    if (!isBackgroundRefresh) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
@@ -38,6 +82,7 @@ export default function LeaderboardPage() {
       if (!token) {
         setError('Not authenticated');
         setLoading(false);
+        setLoadingFresh(false);
         return;
       }
 
@@ -61,17 +106,30 @@ export default function LeaderboardPage() {
         setTotal(data.total || data.results.length);
         setNumberOfPages(data.numberOfPages || 1);
         setPage(pageNum);
+        
+        // Cache first page only
+        if (pageNum === 1) {
+          setCachedLeaderboard(data.results, data.total || data.results.length, data.numberOfPages || 1);
+        }
       }
     } catch (err) {
       console.error('Failed to load leaderboard:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load leaderboard');
+      if (!isBackgroundRefresh || entries.length === 0) {
+        setError(err instanceof Error ? err.message : 'Failed to load leaderboard');
+      }
     } finally {
       setLoading(false);
+      setLoadingFresh(false);
     }
   };
 
   useEffect(() => {
-    loadLeaderboard();
+    // If we have cached data, do a background refresh
+    if (cachedData) {
+      loadLeaderboard(1, true);
+    } else {
+      loadLeaderboard(1, false);
+    }
   }, []);
 
   const getName = (entry: LeaderboardEntry) => {
@@ -103,6 +161,12 @@ export default function LeaderboardPage() {
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-green-500 animate-pulse">● LIVE</span>
+              {loadingFresh && (
+                <span className="text-xs text-gray-400 flex items-center">
+                  <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                  Updating...
+                </span>
+              )}
               <select 
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}

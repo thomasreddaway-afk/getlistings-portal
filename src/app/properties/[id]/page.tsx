@@ -314,9 +314,6 @@ export default function PropertyDetailPage() {
                         <p className="font-medium text-sm">{signal.text}</p>
                         <p className="text-xs text-white/70">Detected selling signal</p>
                       </div>
-                      <div className="ml-auto">
-                        <span className="px-2 py-1 bg-white/20 rounded text-xs font-bold">+pts</span>
-                      </div>
                     </div>
                   )) : (
                     <p className="text-gray-500 text-sm col-span-2">No active signals detected</p>

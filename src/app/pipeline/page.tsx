@@ -1,138 +1,156 @@
 'use client';
 
 import { DemoLayout } from '@/components/layout';
-import { useState, useRef, DragEvent } from 'react';
-import { Plus, X } from 'lucide-react';
-
-interface PipelineCard {
-  id: string;
-  address: string;
-  suburb: string;
-  price: string;
-  soldPrice?: string;
-}
+import { apiRequest } from '@/lib/api';
+import { useState, useEffect, useRef, DragEvent } from 'react';
+import { Plus, X, RefreshCw, Settings, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 interface PipelineStage {
   id: string;
   name: string;
-  color: 'gray' | 'blue' | 'purple' | 'green' | 'amber';
-  cards: PipelineCard[];
+  color: string;
+  order: number;
 }
 
-const colorClasses = {
-  gray: {
-    bg: 'bg-gray-100',
-    text: 'text-gray-700',
-    badge: 'bg-gray-200 text-gray-700',
-    border: 'border-gray-200',
-    hoverBg: 'hover:bg-gray-200',
-  },
-  blue: {
-    bg: 'bg-blue-50',
-    text: 'text-blue-700',
-    badge: 'bg-blue-100 text-blue-700',
-    border: 'border-blue-200',
-    hoverBg: 'hover:bg-blue-100',
-  },
-  purple: {
-    bg: 'bg-purple-50',
-    text: 'text-purple-700',
-    badge: 'bg-purple-100 text-purple-700',
-    border: 'border-purple-200',
-    hoverBg: 'hover:bg-purple-100',
-  },
-  green: {
-    bg: 'bg-green-50',
-    text: 'text-green-700',
-    badge: 'bg-green-100 text-green-700',
-    border: 'border-green-200',
-    hoverBg: 'hover:bg-green-100',
-  },
-  amber: {
-    bg: 'bg-amber-50',
-    text: 'text-amber-700',
-    badge: 'bg-amber-100 text-amber-700',
-    border: 'border-amber-200',
-    hoverBg: 'hover:bg-amber-100',
-  },
+interface PipelineLead {
+  _id: string;
+  leadId: string;
+  streetAddress?: string;
+  suburb?: string;
+  salePrice?: string;
+  sellingScore?: number;
+  pipelineStageId?: string;
+  notes?: string;
+}
+
+interface StageWithLeads extends PipelineStage {
+  leads: PipelineLead[];
+  count: number;
+  loading: boolean;
+}
+
+// Map hex colors to Tailwind classes
+const getColorClasses = (hexColor: string) => {
+  const colorMap: Record<string, { bg: string; text: string; badge: string; border: string }> = {
+    '#3B82F6': { bg: 'bg-blue-50', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-700', border: 'border-blue-200' },
+    '#8B5CF6': { bg: 'bg-purple-50', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-700', border: 'border-purple-200' },
+    '#F59E0B': { bg: 'bg-amber-50', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700', border: 'border-amber-200' },
+    '#EC4899': { bg: 'bg-pink-50', text: 'text-pink-700', badge: 'bg-pink-100 text-pink-700', border: 'border-pink-200' },
+    '#10B981': { bg: 'bg-emerald-50', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-200' },
+    '#22C55E': { bg: 'bg-green-50', text: 'text-green-700', badge: 'bg-green-100 text-green-700', border: 'border-green-200' },
+    '#EF4444': { bg: 'bg-red-50', text: 'text-red-700', badge: 'bg-red-100 text-red-700', border: 'border-red-200' },
+  };
+  return colorMap[hexColor] || { bg: 'bg-gray-100', text: 'text-gray-700', badge: 'bg-gray-200 text-gray-700', border: 'border-gray-200' };
 };
 
-const initialStages: PipelineStage[] = [
-  {
-    id: 'new',
-    name: 'New',
-    color: 'gray',
-    cards: [
-      { id: '1', address: '42 Ocean View Dr', suburb: 'Bondi', price: '$2.4M' },
-      { id: '2', address: '89 King St', suburb: 'Sydney', price: '$850K' },
-      { id: '3', address: '12 Palm Ave', suburb: 'Manly', price: '$1.8M' },
-    ],
-  },
-  {
-    id: 'contacted',
-    name: 'Contacted',
-    color: 'blue',
-    cards: [
-      { id: '4', address: '156 Harbour St', suburb: 'Sydney', price: '$980K' },
-      { id: '5', address: '45 Beach Rd', suburb: 'Coogee', price: '$1.2M' },
-    ],
-  },
-  {
-    id: 'appraisal',
-    name: 'Appraisal Set',
-    color: 'purple',
-    cards: [
-      { id: '6', address: '78 Park Ave', suburb: 'Parramatta', price: '$1.5M' },
-      { id: '7', address: '234 Rose St', suburb: 'Paddington', price: '$2.2M' },
-      { id: '8', address: '67 Station St', suburb: 'Newtown', price: '$890K' },
-      { id: '9', address: '19 Valley View', suburb: 'Mosman', price: '$3.1M' },
-    ],
-  },
-  {
-    id: 'listed',
-    name: 'Listed',
-    color: 'green',
-    cards: [
-      { id: '10', address: '23 Beach Rd', suburb: 'Bondi', price: '$2.1M' },
-      { id: '11', address: '88 Cliff Walk', suburb: 'Vaucluse', price: '$4.5M' },
-    ],
-  },
-  {
-    id: 'sold',
-    name: 'Sold 🎉',
-    color: 'amber',
-    cards: [
-      { id: '12', address: '56 Marine Pde', suburb: 'Manly', price: '$2.8M', soldPrice: '$2.95M' },
-    ],
-  },
+const defaultStages: PipelineStage[] = [
+  { id: 'new', name: 'New Lead', color: '#3B82F6', order: 0 },
+  { id: 'contacted', name: 'Contacted', color: '#8B5CF6', order: 1 },
+  { id: 'meeting', name: 'Meeting Scheduled', color: '#F59E0B', order: 2 },
+  { id: 'proposal', name: 'Proposal Sent', color: '#EC4899', order: 3 },
+  { id: 'negotiation', name: 'Negotiation', color: '#10B981', order: 4 },
+  { id: 'won', name: 'Won', color: '#22C55E', order: 5 },
+  { id: 'lost', name: 'Lost', color: '#EF4444', order: 6 },
 ];
 
 export default function PipelinePage() {
-  const [stages, setStages] = useState<PipelineStage[]>(initialStages);
-  const [draggedCard, setDraggedCard] = useState<{ card: PipelineCard; fromStage: string } | null>(null);
+  const [stages, setStages] = useState<StageWithLeads[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [draggedLead, setDraggedLead] = useState<{ lead: PipelineLead; fromStage: string } | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
-  // Calculate totals
-  const totalCards = stages.reduce((sum, stage) => sum + stage.cards.length, 0);
-  const totalValue = stages.reduce((sum, stage) => {
-    return sum + stage.cards.reduce((cardSum, card) => {
-      const val = parseFloat(card.price.replace('$', '').replace('M', '').replace('K', ''));
-      const multiplier = card.price.includes('M') ? 1000000 : card.price.includes('K') ? 1000 : 1;
-      return cardSum + (val * multiplier);
-    }, 0);
-  }, 0);
-
-  const formatValue = (val: number) => {
-    if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
-    if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
-    return `$${val}`;
+  // Load pipeline settings and summary
+  const loadPipeline = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Get user's pipeline settings (custom stage names)
+      let pipelineStages: PipelineStage[] = defaultStages;
+      try {
+        const settingsResponse = await apiRequest<{ stages: PipelineStage[]; isCustomized: boolean }>('/user/pipeline-settings', 'GET');
+        if (settingsResponse.stages) {
+          pipelineStages = settingsResponse.stages;
+        }
+      } catch (err) {
+        console.log('Using default pipeline stages');
+      }
+      
+      // Get pipeline summary (counts per stage)
+      let summary: Record<string, number> = {};
+      try {
+        const summaryResponse = await apiRequest<{ summary: Record<string, number> }>('/lead/pipeline/summary', 'GET');
+        if (summaryResponse.summary) {
+          summary = summaryResponse.summary;
+        }
+      } catch (err) {
+        console.log('Could not load pipeline summary');
+      }
+      
+      // Initialize stages with counts
+      const stagesWithLeads: StageWithLeads[] = pipelineStages.map(stage => ({
+        ...stage,
+        leads: [],
+        count: summary[stage.id] || 0,
+        loading: false,
+      }));
+      
+      setStages(stagesWithLeads);
+      
+      // Load leads for each stage that has leads
+      for (const stage of stagesWithLeads) {
+        if (stage.count > 0) {
+          loadStageLeads(stage.id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load pipeline:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load pipeline');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Load leads for a specific stage
+  const loadStageLeads = async (stageId: string) => {
+    setStages(prev => prev.map(s => s.id === stageId ? { ...s, loading: true } : s));
+    
+    try {
+      const response = await apiRequest<{ leads: PipelineLead[]; total: number }>('/lead/pipeline/stage', 'POST', {
+        stageId,
+        page: 1,
+        perPage: 50,
+      });
+      
+      if (response.leads) {
+        setStages(prev => prev.map(s => 
+          s.id === stageId 
+            ? { ...s, leads: response.leads, loading: false }
+            : s
+        ));
+      }
+    } catch (err) {
+      console.error(`Failed to load leads for stage ${stageId}:`, err);
+      setStages(prev => prev.map(s => s.id === stageId ? { ...s, loading: false } : s));
+    }
+  };
+
+  useEffect(() => {
+    loadPipeline();
+  }, []);
+
+  // Calculate totals
+  const totalLeads = stages.reduce((sum, stage) => sum + stage.count, 0);
+
   // Drag handlers
-  const handleDragStart = (e: DragEvent, card: PipelineCard, stageId: string) => {
-    setDraggedCard({ card, fromStage: stageId });
+  const handleDragStart = (e: DragEvent, lead: PipelineLead, stageId: string) => {
+    setDraggedLead({ lead, fromStage: stageId });
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -145,33 +163,53 @@ export default function PipelinePage() {
     setDragOverStage(null);
   };
 
-  const handleDrop = (e: DragEvent, toStageId: string) => {
+  const handleDrop = async (e: DragEvent, toStageId: string) => {
     e.preventDefault();
     setDragOverStage(null);
     
-    if (!draggedCard || draggedCard.fromStage === toStageId) {
-      setDraggedCard(null);
+    if (!draggedLead || draggedLead.fromStage === toStageId) {
+      setDraggedLead(null);
       return;
     }
 
-    setStages(prev => {
-      const newStages = prev.map(stage => {
-        if (stage.id === draggedCard.fromStage) {
-          return { ...stage, cards: stage.cards.filter(c => c.id !== draggedCard.card.id) };
-        }
-        if (stage.id === toStageId) {
-          return { ...stage, cards: [...stage.cards, draggedCard.card] };
-        }
-        return stage;
-      });
-      return newStages;
-    });
+    const leadId = draggedLead.lead._id;
+    const fromStageId = draggedLead.fromStage;
     
-    setDraggedCard(null);
+    // Optimistic update
+    setStages(prev => prev.map(stage => {
+      if (stage.id === fromStageId) {
+        return { 
+          ...stage, 
+          leads: stage.leads.filter(l => l._id !== leadId),
+          count: stage.count - 1,
+        };
+      }
+      if (stage.id === toStageId) {
+        return { 
+          ...stage, 
+          leads: [...stage.leads, { ...draggedLead.lead, pipelineStageId: toStageId }],
+          count: stage.count + 1,
+        };
+      }
+      return stage;
+    }));
+    
+    setDraggedLead(null);
+    
+    // Save to API
+    try {
+      await apiRequest(`/lead/${leadId}/pipeline`, 'PATCH', {
+        pipelineStageId: toStageId,
+      });
+    } catch (err) {
+      console.error('Failed to update lead stage:', err);
+      // Revert on error
+      loadPipeline();
+    }
   };
 
   const handleDragEnd = () => {
-    setDraggedCard(null);
+    setDraggedLead(null);
     setDragOverStage(null);
   };
 
@@ -181,29 +219,112 @@ export default function PipelinePage() {
     setTimeout(() => editInputRef.current?.focus(), 0);
   };
 
-  const saveStageEdit = (stageId: string, newName: string) => {
-    if (newName.trim()) {
-      setStages(prev => prev.map(s => s.id === stageId ? { ...s, name: newName.trim() } : s));
+  const saveStageEdit = async (stageId: string, newName: string) => {
+    if (!newName.trim()) {
+      setEditingStage(null);
+      return;
     }
+    
+    // Update locally
+    const updatedStages = stages.map(s => 
+      s.id === stageId ? { ...s, name: newName.trim() } : s
+    );
+    setStages(updatedStages);
     setEditingStage(null);
+    
+    // Save to API
+    setSaving(true);
+    try {
+      await apiRequest('/user/pipeline-settings', 'PUT', {
+        stages: updatedStages.map(s => ({
+          id: s.id,
+          name: s.name,
+          color: s.color,
+          order: s.order,
+        })),
+      });
+    } catch (err) {
+      console.error('Failed to save pipeline settings:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Add new stage
-  const addStage = () => {
-    const colors: Array<'gray' | 'blue' | 'purple' | 'green' | 'amber'> = ['gray', 'blue', 'purple', 'green', 'amber'];
-    const newStage: PipelineStage = {
+  const addStage = async () => {
+    const colors = ['#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#10B981', '#22C55E'];
+    const newStage: StageWithLeads = {
       id: `stage-${Date.now()}`,
       name: 'New Stage',
       color: colors[stages.length % colors.length],
-      cards: [],
+      order: stages.length,
+      leads: [],
+      count: 0,
+      loading: false,
     };
-    setStages([...stages, newStage]);
+    
+    const updatedStages = [...stages, newStage];
+    setStages(updatedStages);
+    
+    // Save to API
+    setSaving(true);
+    try {
+      await apiRequest('/user/pipeline-settings', 'PUT', {
+        stages: updatedStages.map(s => ({
+          id: s.id,
+          name: s.name,
+          color: s.color,
+          order: s.order,
+        })),
+      });
+    } catch (err) {
+      console.error('Failed to add stage:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Delete stage
-  const deleteStage = (stageId: string) => {
-    setStages(prev => prev.filter(s => s.id !== stageId));
+  const deleteStage = async (stageId: string) => {
+    const stage = stages.find(s => s.id === stageId);
+    if (stage && stage.count > 0) {
+      alert('Cannot delete a stage with leads. Move the leads first.');
+      return;
+    }
+    
+    const updatedStages = stages.filter(s => s.id !== stageId);
+    setStages(updatedStages);
+    
+    // Save to API
+    setSaving(true);
+    try {
+      await apiRequest('/user/pipeline-settings', 'PUT', {
+        stages: updatedStages.map(s => ({
+          id: s.id,
+          name: s.name,
+          color: s.color,
+          order: s.order,
+        })),
+      });
+    } catch (err) {
+      console.error('Failed to delete stage:', err);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <DemoLayout currentPage="pipeline">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+            <p className="text-gray-500">Loading pipeline...</p>
+          </div>
+        </div>
+      </DemoLayout>
+    );
+  }
 
   return (
     <DemoLayout currentPage="pipeline">
@@ -214,11 +335,20 @@ export default function PipelinePage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
               <p className="text-sm text-gray-500 mt-0.5">
-                <span className="font-semibold text-gray-900">{totalCards}</span> opportunities • <span className="font-semibold text-gray-900">{formatValue(totalValue)}</span> total value
+                <span className="font-semibold text-gray-900">{totalLeads}</span> leads in your pipeline
+                {saving && <span className="ml-2 text-blue-600"><Loader2 className="w-3 h-3 inline animate-spin" /> Saving...</span>}
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <p className="text-xs text-gray-400">💡 Drag cards between stages • Click stage name to rename</p>
+              <p className="text-xs text-gray-400">💡 Drag leads between stages • Click stage name to rename</p>
+              <button
+                onClick={loadPipeline}
+                disabled={loading}
+                className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
               <button
                 onClick={addStage}
                 className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-700 text-sm font-medium"
@@ -230,93 +360,140 @@ export default function PipelinePage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={loadPipeline} className="mt-2 text-sm text-red-600 underline">Retry</button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {stages.length === 0 && !loading && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Settings className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Set up your pipeline</h3>
+              <p className="text-gray-500 mb-4">Create stages to track your leads through your sales process</p>
+              <button
+                onClick={addStage}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+              >
+                Create First Stage
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Pipeline Board */}
-        <div className="flex-1 overflow-x-auto p-4">
-          <div className="flex space-x-4 h-full min-w-max">
-            {stages.map(stage => {
-              const colors = colorClasses[stage.color];
-              
-              return (
-                <div
-                  key={stage.id}
-                  className={`w-56 ${colors.bg} rounded-lg p-3 flex flex-col group`}
-                >
-                  {/* Stage Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    {editingStage === stage.id ? (
-                      <input
-                        ref={editInputRef}
-                        type="text"
-                        defaultValue={stage.name}
-                        className={`font-semibold ${colors.text} bg-white px-2 py-1 rounded border border-gray-300 text-sm w-full mr-2`}
-                        onBlur={(e) => saveStageEdit(stage.id, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveStageEdit(stage.id, e.currentTarget.value);
-                          if (e.key === 'Escape') setEditingStage(null);
-                        }}
-                      />
-                    ) : (
-                      <h3
-                        className={`stage-name font-semibold ${colors.text} cursor-pointer ${colors.hoverBg} px-2 py-1 -mx-2 -my-1 rounded`}
-                        onClick={() => startEditingStage(stage.id)}
-                        title="Click to rename"
-                      >
-                        {stage.name}
-                      </h3>
-                    )}
-                    <div className="flex items-center space-x-1">
-                      <span className={`text-xs ${colors.badge} px-2 py-0.5 rounded-full`}>
-                        {stage.cards.length}
-                      </span>
-                      <button
-                        onClick={() => deleteStage(stage.id)}
-                        className={`p-1 ${colors.hoverBg} rounded opacity-0 group-hover:opacity-100 transition-opacity`}
-                        title="Delete stage"
-                      >
-                        <X className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
-                      </button>
+        {stages.length > 0 && (
+          <div className="flex-1 overflow-x-auto p-4">
+            <div className="flex space-x-4 h-full min-w-max">
+              {stages.map(stage => {
+                const colors = getColorClasses(stage.color);
+                
+                return (
+                  <div
+                    key={stage.id}
+                    className={`w-64 ${colors.bg} rounded-lg p-3 flex flex-col group`}
+                  >
+                    {/* Stage Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      {editingStage === stage.id ? (
+                        <input
+                          ref={editInputRef}
+                          type="text"
+                          defaultValue={stage.name}
+                          className={`font-semibold ${colors.text} bg-white px-2 py-1 rounded border border-gray-300 text-sm w-full mr-2`}
+                          onBlur={(e) => saveStageEdit(stage.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveStageEdit(stage.id, e.currentTarget.value);
+                            if (e.key === 'Escape') setEditingStage(null);
+                          }}
+                        />
+                      ) : (
+                        <h3
+                          className={`stage-name font-semibold ${colors.text} cursor-pointer hover:bg-white/50 px-2 py-1 -mx-2 -my-1 rounded`}
+                          onClick={() => startEditingStage(stage.id)}
+                          title="Click to rename"
+                        >
+                          {stage.name}
+                        </h3>
+                      )}
+                      <div className="flex items-center space-x-1">
+                        <span className={`text-xs ${colors.badge} px-2 py-0.5 rounded-full`}>
+                          {stage.count}
+                        </span>
+                        <button
+                          onClick={() => deleteStage(stage.id)}
+                          className="p-1 hover:bg-white/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete stage"
+                        >
+                          <X className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Drop Zone */}
+                    <div
+                      className={`space-y-2 flex-1 overflow-auto min-h-[100px] rounded-lg transition-colors ${
+                        dragOverStage === stage.id ? 'bg-blue-100 border-2 border-dashed border-blue-400' : ''
+                      }`}
+                      onDragOver={(e) => handleDragOver(e, stage.id)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, stage.id)}
+                    >
+                      {stage.loading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                        </div>
+                      ) : (
+                        <>
+                          {stage.leads.map(lead => (
+                            <Link
+                              key={lead._id}
+                              href={`/properties/${lead.leadId || lead._id}`}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, lead, stage.id)}
+                              onDragEnd={handleDragEnd}
+                              className={`block bg-white rounded-lg p-3 border ${colors.border} cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow ${
+                                draggedLead?.lead._id === lead._id ? 'opacity-50' : ''
+                              }`}
+                            >
+                              <p className="font-medium text-sm text-gray-900">{lead.streetAddress || 'Unknown Address'}</p>
+                              <p className="text-xs text-gray-500">{lead.suburb || ''}</p>
+                              {lead.salePrice && (
+                                <p className="text-xs text-green-600 mt-2 font-medium">{lead.salePrice}</p>
+                              )}
+                              {lead.sellingScore && (
+                                <div className="flex items-center mt-1">
+                                  <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full bg-green-500 rounded-full" 
+                                      style={{ width: `${lead.sellingScore}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs text-gray-500 ml-1">{lead.sellingScore}%</span>
+                                </div>
+                              )}
+                            </Link>
+                          ))}
+
+                          {stage.leads.length === 0 && !dragOverStage && (
+                            <div className="text-center py-8 text-gray-400 text-xs">
+                              {stage.count > 0 ? 'Loading...' : 'Drop leads here'}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
-
-                  {/* Drop Zone */}
-                  <div
-                    className={`space-y-2 flex-1 overflow-auto min-h-[100px] rounded-lg transition-colors ${
-                      dragOverStage === stage.id ? 'bg-blue-100 border-2 border-dashed border-blue-400' : ''
-                    }`}
-                    onDragOver={(e) => handleDragOver(e, stage.id)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, stage.id)}
-                  >
-                    {stage.cards.map(card => (
-                      <div
-                        key={card.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, card, stage.id)}
-                        onDragEnd={handleDragEnd}
-                        className={`bg-white rounded-lg p-3 border ${colors.border} cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow ${
-                          draggedCard?.card.id === card.id ? 'opacity-50' : ''
-                        }`}
-                      >
-                        <p className="font-medium text-sm">{card.address}</p>
-                        <p className="text-xs text-gray-500">{card.suburb}</p>
-                        <p className="text-xs text-green-600 mt-2 font-medium">{card.price}</p>
-                        {card.soldPrice && (
-                          <p className="text-xs text-amber-600 mt-1">✓ Sold for {card.soldPrice}</p>
-                        )}
-                      </div>
-                    ))}
-
-                    {stage.cards.length === 0 && !dragOverStage && (
-                      <div className="text-center py-8 text-gray-400 text-xs">
-                        Drop cards here
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </DemoLayout>
   );

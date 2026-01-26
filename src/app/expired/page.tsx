@@ -27,6 +27,43 @@ interface ExpiredListing {
   car?: number;
 }
 
+// Cache helpers - 2 minute expiry for quick navigation between tabs
+const CACHE_KEY = 'gl_cache_expired_listings';
+const CACHE_EXPIRY_MS = 2 * 60 * 1000; // 2 minutes
+
+interface CachedData {
+  listings: ExpiredListing[];
+  stats: { total: number; urgentCount: number; soonCount: number };
+  timestamp: number;
+}
+
+function getCachedExpiredListings(): CachedData | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+    const data = JSON.parse(cached) as CachedData;
+    const age = Date.now() - data.timestamp;
+    if (age > CACHE_EXPIRY_MS) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedExpiredListings(listings: ExpiredListing[], stats: { total: number; urgentCount: number; soonCount: number }): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const data: CachedData = { listings, stats, timestamp: Date.now() };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // Storage full or unavailable
+  }
+}
+
 // Urgency based on days on market (stale listings)
 function getUrgencyStyle(daysOnMarket?: number): { class: string; text: string } {
   if (!daysOnMarket) return { class: 'bg-amber-100 text-amber-700', text: 'On Market' };
@@ -51,13 +88,20 @@ function formatDate(dateStr?: string): string {
 
 export default function ExpiredListingsPage() {
   const router = useRouter();
-  const [listings, setListings] = useState<ExpiredListing[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Check cache on initial render - must be inside component to work with SSR
+  const [cachedData] = useState<CachedData | null>(() => getCachedExpiredListings());
+  
+  const [listings, setListings] = useState<ExpiredListing[]>(cachedData?.listings || []);
+  const [loading, setLoading] = useState(!cachedData);
+  const [loadingFresh, setLoadingFresh] = useState(!!cachedData); // Background refresh indicator
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({ total: 0, urgentCount: 0, soonCount: 0 });
+  const [stats, setStats] = useState(cachedData?.stats || { total: 0, urgentCount: 0, soonCount: 0 });
 
-  const loadExpiredListings = async () => {
-    setLoading(true);
+  const loadExpiredListings = async (isBackgroundRefresh = false) => {
+    if (!isBackgroundRefresh) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
@@ -85,17 +129,29 @@ export default function ExpiredListingsPage() {
         else if (days > 180) soonCount++;
       });
       
-      setStats({ total, urgentCount, soonCount });
+      const newStats = { total, urgentCount, soonCount };
+      setStats(newStats);
+      
+      // Cache the fresh data
+      setCachedExpiredListings(sorted, newStats);
     } catch (err) {
       console.error('Failed to load expired listings:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load listings');
+      if (!isBackgroundRefresh || listings.length === 0) {
+        setError(err instanceof Error ? err.message : 'Failed to load listings');
+      }
     } finally {
       setLoading(false);
+      setLoadingFresh(false);
     }
   };
 
   useEffect(() => {
-    loadExpiredListings();
+    // If we have cached data, do a background refresh
+    if (cachedData) {
+      loadExpiredListings(true);
+    } else {
+      loadExpiredListings(false);
+    }
   }, []);
 
   return (
@@ -116,8 +172,14 @@ export default function ExpiredListingsPage() {
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-xs font-medium text-green-700">LIVE</span>
               </div>
+              {loadingFresh && (
+                <span className="text-xs text-gray-400 flex items-center">
+                  <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                  Updating...
+                </span>
+              )}
               <button
-                onClick={loadExpiredListings}
+                onClick={() => loadExpiredListings(false)}
                 disabled={loading}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
@@ -149,7 +211,7 @@ export default function ExpiredListingsPage() {
         {error && (
           <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-700 text-sm">{error}</p>
-            <button onClick={loadExpiredListings} className="mt-2 text-sm text-red-600 underline">Retry</button>
+            <button onClick={() => loadExpiredListings(false)} className="mt-2 text-sm text-red-600 underline">Retry</button>
           </div>
         )}
 

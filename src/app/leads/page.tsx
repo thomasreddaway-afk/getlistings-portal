@@ -100,6 +100,11 @@ const SUBURBS_CACHE_KEY = 'gl_cache_suburbs';
 const CACHE_TS_KEY = 'gl_cache_suburbs_ts';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+// Cache for first page of leads
+const LEADS_CACHE_KEY = 'gl_cache_leads_page1';
+const LEADS_CACHE_TS_KEY = 'gl_cache_leads_ts';
+const LEADS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
 function getCachedSuburbData(): { suburbs: Suburb[], counts: Record<string, number> } | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -122,18 +127,42 @@ function setCachedSuburbData(suburbs: Suburb[], counts: Record<string, number>):
   } catch (e) {}
 }
 
+function getCachedLeads(): Lead[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const ts = localStorage.getItem(LEADS_CACHE_TS_KEY);
+    if (ts && Date.now() - parseInt(ts, 10) < LEADS_CACHE_DURATION) {
+      const leads = localStorage.getItem(LEADS_CACHE_KEY);
+      if (leads) return JSON.parse(leads);
+    }
+  } catch (e) {}
+  return null;
+}
+
+function setCachedLeads(leads: Lead[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LEADS_CACHE_KEY, JSON.stringify(leads));
+    localStorage.setItem(LEADS_CACHE_TS_KEY, Date.now().toString());
+  } catch (e) {}
+}
+
 export default function LeadsPage() {
-  const cachedData = getCachedSuburbData();
+  // Check cache on initial render - must be inside useState to work with SSR/hydration
+  const [cachedData] = useState<{ suburbs: Suburb[], counts: Record<string, number> } | null>(() => getCachedSuburbData());
+  const [cachedLeads] = useState<Lead[] | null>(() => getCachedLeads());
+  const hasCachedLeads = cachedLeads && cachedLeads.length > 0;
   
   // Core data
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<Lead[]>(cachedLeads || []);
   const [suburbs, setSuburbs] = useState<Suburb[]>(cachedData?.suburbs || []);
   const [suburbCounts, setSuburbCounts] = useState<Record<string, number>>(cachedData?.counts || {});
   const [totalCount, setTotalCount] = useState<number>(0);
   
-  // Loading states
-  const [loading, setLoading] = useState(true);
+  // Loading states - don't show loading if we have cached leads
+  const [loading, setLoading] = useState(!hasCachedLeads);
   const [loadingLeads, setLoadingLeads] = useState(false);
+  const [loadingFresh, setLoadingFresh] = useState(false); // Background refresh indicator
   const [loadingCounts, setLoadingCounts] = useState(!cachedData?.counts || Object.keys(cachedData.counts).length === 0);
   const [error, setError] = useState<string | null>(null);
   
@@ -239,9 +268,10 @@ export default function LeadsPage() {
     try {
       // Use the new efficient counts-by-suburb endpoint
       // This uses MongoDB aggregation - much faster than loading all leads
+      // Use shorter timeout (5s) since this is optional/non-blocking
       const countsResponse = await apiRequest<{ counts: Record<string, number>; total: number }>('/lead/counts-by-suburb', 'POST', {
         suburbs: suburbsList.map(s => ({ suburb: s.suburb, state: s.state })),
-      });
+      }, 5000); // 5 second timeout - this endpoint may not exist on production yet
       
       if (countsResponse.counts) {
         setSuburbCounts(countsResponse.counts);
@@ -285,16 +315,24 @@ export default function LeadsPage() {
     }
   }, [suburbs, selectedSuburb, buildRequestBody, suburbCounts]);
 
-  // Initial load - FAST: Load leads first, counts in background
+  // Initial load - FAST: Use cache if available, refresh in background
   useEffect(() => {
     const init = async () => {
-      setLoading(true);
+      // If we have cached leads, show them immediately and refresh in background
+      const hasCached = cachedLeads && cachedLeads.length > 0;
+      
+      if (hasCached) {
+        // Already showing cached leads, refresh in background
+        setLoadingFresh(true);
+      } else {
+        setLoading(true);
+      }
       
       // Step 1: Get suburbs list (fast)
       const loadedSuburbs = await loadSuburbsOnly();
       
       if (loadedSuburbs.length > 0) {
-        // Step 2: Load first page of leads immediately (fast - only 50 leads)
+        // Step 2: Load first page of leads
         const body = {
           page: 1,
           perPage,
@@ -305,6 +343,8 @@ export default function LeadsPage() {
           const response = await apiRequest<{ leads: Lead[]; total: number }>('/lead/all', 'POST', body);
           if (response.leads) {
             setLeads(response.leads);
+            // Cache the first page for next visit
+            setCachedLeads(response.leads);
           }
         } catch (err) {
           console.error('Failed to load initial leads:', err);
@@ -312,12 +352,13 @@ export default function LeadsPage() {
         
         // Page is now ready - user can browse
         setLoading(false);
+        setLoadingFresh(false);
         
         // Step 3: Load suburb counts in BACKGROUND (slow, but non-blocking)
-        // This will update the UI when ready
         loadSuburbCountsInBackground(loadedSuburbs);
       } else {
         setLoading(false);
+        setLoadingFresh(false);
       }
     };
     
@@ -383,9 +424,15 @@ export default function LeadsPage() {
     : sortedLeads;
 
   // Calculate pagination info
+  // Use suburbCounts if available, otherwise estimate based on loaded leads
   const currentSuburbCount = selectedSuburb === 'all' 
     ? (suburbCounts['all'] || 0)
     : (suburbCounts[selectedSuburb.toLowerCase()] || 0);
+  
+  // If counts aren't available yet, check if we have a full page (meaning there's probably more)
+  const hasMorePages = displayLeads.length >= perPage;
+  // Show pagination if: we have counts > perPage, OR we got a full page of results (likely more exist)
+  const showPagination = currentSuburbCount > perPage || hasMorePages || currentPage > 1;
   
   // For filtered results, estimate based on filter
   let estimatedTotal = currentSuburbCount;
@@ -395,7 +442,9 @@ export default function LeadsPage() {
     estimatedTotal = displayLeads.length < perPage ? displayLeads.length : currentSuburbCount;
   }
   
-  const totalPages = Math.max(1, Math.ceil(currentSuburbCount / perPage));
+  // If counts not loaded yet but we have full page, assume there are more
+  const effectiveTotal = currentSuburbCount > 0 ? currentSuburbCount : (hasMorePages ? (currentPage * perPage + perPage) : displayLeads.length);
+  const totalPages = Math.max(1, Math.ceil(effectiveTotal / perPage));
   const showingFrom = displayLeads.length > 0 ? (currentPage - 1) * perPage + 1 : 0;
   const showingTo = showingFrom + displayLeads.length - 1;
 
@@ -421,10 +470,15 @@ export default function LeadsPage() {
       localStorage.removeItem(SUBURBS_CACHE_KEY);
       localStorage.removeItem(SUBURB_COUNTS_CACHE_KEY);
       localStorage.removeItem(CACHE_TS_KEY);
+      localStorage.removeItem(LEADS_CACHE_KEY);
+      localStorage.removeItem(LEADS_CACHE_TS_KEY);
     }
     setLoading(true);
-    await loadSuburbsAndCounts();
-    await loadLeads(1, selectedSuburb);
+    const loadedSuburbs = await loadSuburbsOnly();
+    if (loadedSuburbs.length > 0) {
+      await loadLeads(1, selectedSuburb, loadedSuburbs);
+      loadSuburbCountsInBackground(loadedSuburbs);
+    }
     setLoading(false);
   };
 
@@ -434,17 +488,25 @@ export default function LeadsPage() {
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Seller Scores</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {loadingCounts ? (
-                  <span className="inline-flex items-center">
-                    <span className="animate-pulse">Loading counts...</span>
-                  </span>
-                ) : (
-                  <>{(suburbCounts['all'] || 0).toLocaleString()} leads in your subscribed suburbs</>
-                )}
-              </p>
+            <div className="flex items-center space-x-3">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Seller Scores</h1>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {loadingCounts ? (
+                    <span className="inline-flex items-center">
+                      <span className="animate-pulse">Loading counts...</span>
+                    </span>
+                  ) : (
+                    <>{(suburbCounts['all'] || 0).toLocaleString()} leads in your subscribed suburbs</>
+                  )}
+                </p>
+              </div>
+              {loadingFresh && (
+                <span className="flex items-center space-x-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Updating...</span>
+                </span>
+              )}
             </div>
             <div className="flex items-center space-x-3">
               <button
@@ -536,7 +598,7 @@ export default function LeadsPage() {
               { key: 'expiring', label: 'Expiring' },
               { key: 'listed', label: 'Listed' },
               { key: 'valuation', label: 'Valuation' },
-              { key: 'neighbour', label: 'Neighbour' },
+              { key: 'neighbour', label: 'Neighbour Selling' },
               { key: 'fsbo', label: 'FSBO' },
             ].map(({ key, label }) => (
               <button
@@ -713,10 +775,12 @@ export default function LeadsPage() {
             </div>
 
             {/* Pagination */}
-            {currentSuburbCount > perPage && (
+            {showPagination && (
               <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between">
                 <div className="text-sm text-gray-500">
-                  Showing {showingFrom.toLocaleString()} - {showingTo.toLocaleString()} of {currentSuburbCount.toLocaleString()}
+                  Showing {showingFrom.toLocaleString()} - {showingTo.toLocaleString()}
+                  {currentSuburbCount > 0 && ` of ${currentSuburbCount.toLocaleString()}`}
+                  {loadingCounts && currentSuburbCount === 0 && ' of ...'}
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
