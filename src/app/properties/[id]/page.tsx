@@ -36,6 +36,7 @@ interface LeadDetail {
   recentlySold?: boolean;
   socialTag?: boolean;
   fsboListing?: boolean;
+  pipelineStageId?: string;
 }
 
 const signalInfo: Record<string, { text: string; icon: string; color: string }> = {
@@ -82,13 +83,85 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+interface PipelineStage {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+}
+
+const defaultPipelineStages: PipelineStage[] = [
+  { id: 'new', name: 'New Lead', color: '#3B82F6', order: 0 },
+  { id: 'contacted', name: 'Contacted', color: '#8B5CF6', order: 1 },
+  { id: 'meeting', name: 'Meeting Scheduled', color: '#F59E0B', order: 2 },
+  { id: 'proposal', name: 'Proposal Sent', color: '#EC4899', order: 3 },
+  { id: 'negotiation', name: 'Negotiation', color: '#10B981', order: 4 },
+  { id: 'won', name: 'Won', color: '#22C55E', order: 5 },
+  { id: 'lost', name: 'Lost', color: '#EF4444', order: 6 },
+];
+
 export default function PropertyDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [lead, setLead] = useState<LeadDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pipelineStage, setPipelineStage] = useState(0);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(defaultPipelineStages);
+  const [currentStageIndex, setCurrentStageIndex] = useState(0);
+  const [savingStage, setSavingStage] = useState(false);
+
+  // Load pipeline stages from user settings
+  const loadPipelineStages = async (token: string) => {
+    try {
+      const response = await fetch(`${API_URL}/user/pipeline-settings`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.stages && data.stages.length > 0) {
+          setPipelineStages(data.stages.sort((a: PipelineStage, b: PipelineStage) => a.order - b.order));
+        }
+      }
+    } catch (err) {
+      console.log('Using default pipeline stages');
+    }
+  };
+
+  // Update lead's pipeline stage
+  const updateLeadStage = async (stageId: string, stageIndex: number) => {
+    if (!lead || savingStage) return;
+    
+    const previousIndex = currentStageIndex;
+    setCurrentStageIndex(stageIndex);
+    setSavingStage(true);
+    
+    try {
+      const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+      if (!token) return;
+      
+      const response = await fetch(`${API_URL}/lead/${lead._id}/pipeline`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pipelineStageId: stageId }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update stage');
+      }
+    } catch (err) {
+      console.error('Failed to update lead stage:', err);
+      setCurrentStageIndex(previousIndex); // Revert on error
+    } finally {
+      setSavingStage(false);
+    }
+  };
 
   useEffect(() => {
     const loadLead = async () => {
@@ -99,6 +172,9 @@ export default function PropertyDetailPage() {
           setLoading(false);
           return;
         }
+
+        // Load pipeline stages first
+        await loadPipelineStages(token);
 
         const response = await fetch(`${API_URL}/lead/detail/${params.id}`, {
           headers: {
@@ -113,7 +189,16 @@ export default function PropertyDetailPage() {
 
         const data = await response.json();
         // API returns { lead: {...} }
-        setLead(data.lead || data);
+        const leadData = data.lead || data;
+        setLead(leadData);
+        
+        // Set current stage based on lead's pipelineStageId
+        if (leadData.pipelineStageId) {
+          const stageIndex = pipelineStages.findIndex(s => s.id === leadData.pipelineStageId);
+          if (stageIndex !== -1) {
+            setCurrentStageIndex(stageIndex);
+          }
+        }
       } catch (err) {
         console.error('Failed to load lead:', err);
         setError(err instanceof Error ? err.message : 'Failed to load lead');
@@ -157,13 +242,17 @@ export default function PropertyDetailPage() {
   const signals = getActiveSignals(lead);
   const scoreOffset = 301.59 - (301.59 * lead.sellingScore / 100);
 
-  const pipelineStages = [
-    { name: 'New', icon: User },
-    { name: 'Contacted', icon: Phone },
-    { name: 'Appt', icon: Clock },
-    { name: 'Listed', icon: Home },
-    { name: 'Sold!', icon: Zap },
-  ];
+  // Helper to get icon based on stage name/id
+  const getStageIcon = (stage: PipelineStage) => {
+    const nameLower = stage.name.toLowerCase();
+    if (nameLower.includes('new')) return User;
+    if (nameLower.includes('contact')) return Phone;
+    if (nameLower.includes('meet') || nameLower.includes('appt') || nameLower.includes('appraisal')) return Clock;
+    if (nameLower.includes('list') || nameLower.includes('proposal')) return Home;
+    if (nameLower.includes('won') || nameLower.includes('sold')) return Zap;
+    if (nameLower.includes('negot')) return MessageSquare;
+    return User;
+  };
 
   return (
     <DemoLayout currentPage="leads">
@@ -506,6 +595,7 @@ export default function PropertyDetailPage() {
                     <h3 className="font-bold text-gray-900 flex items-center">
                       <FileText className="w-5 h-5 mr-2 text-blue-600" />
                       Pipeline Progress
+                      {savingStage && <span className="ml-2 text-xs text-gray-400">(saving...)</span>}
                     </h3>
                     <button 
                       onClick={() => router.push('/pipeline')}
@@ -514,32 +604,35 @@ export default function PropertyDetailPage() {
                       View Pipeline
                     </button>
                   </div>
-                  <div className="flex items-center">
-                    {pipelineStages.map((stage, idx) => {
-                      const StageIcon = stage.icon;
-                      const isActive = idx <= pipelineStage;
-                      const isCurrent = idx === pipelineStage;
+                  <div className="flex items-center overflow-x-auto pb-2 pt-3">
+                    {pipelineStages.slice(0, 6).map((stage, idx) => {
+                      const StageIcon = getStageIcon(stage);
+                      const isActive = idx <= currentStageIndex;
+                      const isCurrent = idx === currentStageIndex;
                       
                       return (
-                        <div key={stage.name} className="flex-1 relative">
+                        <div key={stage.id} className="flex-1 relative min-w-[60px]">
                           <div 
-                            onClick={() => setPipelineStage(idx)}
-                            className="flex flex-col items-center cursor-pointer relative z-10"
+                            onClick={() => updateLeadStage(stage.id, idx)}
+                            className={`flex flex-col items-center cursor-pointer relative z-10 ${savingStage ? 'pointer-events-none opacity-50' : ''}`}
                           >
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                              isCurrent 
-                                ? 'bg-primary text-white shadow-lg ring-4 ring-primary/20' 
-                                : isActive 
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-gray-200 text-gray-400 hover:bg-blue-100 hover:text-blue-600'
-                            }`}>
+                            <div 
+                              className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                                isCurrent 
+                                  ? 'bg-primary text-white shadow-lg ring-4 ring-primary/20' 
+                                  : isActive 
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-200 text-gray-400 hover:bg-blue-100 hover:text-blue-600'
+                              }`}
+                              style={isCurrent ? { backgroundColor: stage.color } : undefined}
+                            >
                               <StageIcon className="w-5 h-5" />
                             </div>
-                            <span className={`text-xs mt-1 ${isCurrent ? 'font-semibold text-primary' : 'text-gray-400'}`}>
+                            <span className={`text-xs mt-1 text-center truncate max-w-[60px] ${isCurrent ? 'font-semibold text-primary' : 'text-gray-400'}`}>
                               {stage.name}
                             </span>
                           </div>
-                          {idx < pipelineStages.length - 1 && (
+                          {idx < pipelineStages.slice(0, 6).length - 1 && (
                             <div className={`absolute top-5 left-1/2 w-full h-0.5 ${isActive ? 'bg-green-500' : 'bg-gray-200'}`}></div>
                           )}
                         </div>

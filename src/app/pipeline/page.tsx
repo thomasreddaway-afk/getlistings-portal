@@ -44,6 +44,14 @@ const getColorClasses = (hexColor: string) => {
   return colorMap[hexColor] || { bg: 'bg-gray-100', text: 'text-gray-700', badge: 'bg-gray-200 text-gray-700', border: 'border-gray-200' };
 };
 
+// Format price as $1,234,567
+const formatPrice = (price?: string): string => {
+  if (!price) return '';
+  const num = parseFloat(price.replace(/[$,]/g, ''));
+  if (isNaN(num)) return price;
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
+};
+
 const defaultStages: PipelineStage[] = [
   { id: 'new', name: 'New Lead', color: '#3B82F6', order: 0 },
   { id: 'contacted', name: 'Contacted', color: '#8B5CF6', order: 1 },
@@ -82,33 +90,56 @@ export default function PipelinePage() {
         console.log('Using default pipeline stages');
       }
       
-      // Get pipeline summary (counts per stage)
-      let summary: Record<string, number> = {};
+      // Get pipeline summary (counts and leads per stage)
+      // API returns: { summary: [{ stageId, count, leads: [...] }] }
+      interface SummaryItem {
+        stageId: string;
+        count: number;
+        leads: Array<{
+          myLeadId: string;
+          lead: PipelineLead;
+          pipelineUpdatedAt: string;
+          notes: string;
+        }>;
+      }
+      
+      let summaryData: SummaryItem[] = [];
       try {
-        const summaryResponse = await apiRequest<{ summary: Record<string, number> }>('/lead/pipeline/summary', 'GET');
-        if (summaryResponse.summary) {
-          summary = summaryResponse.summary;
+        const summaryResponse = await apiRequest<{ summary: SummaryItem[] }>('/lead/pipeline/summary', 'GET');
+        if (summaryResponse.summary && Array.isArray(summaryResponse.summary)) {
+          summaryData = summaryResponse.summary;
         }
       } catch (err) {
         console.log('Could not load pipeline summary');
       }
       
-      // Initialize stages with counts
+      // Build a map of stageId -> { count, leads }
+      const summaryMap: Record<string, { count: number; leads: PipelineLead[] }> = {};
+      for (const item of summaryData) {
+        summaryMap[item.stageId] = {
+          count: item.count,
+          leads: item.leads.map(l => ({
+            _id: l.lead._id,
+            leadId: l.myLeadId,
+            streetAddress: l.lead.streetAddress,
+            suburb: l.lead.suburb,
+            salePrice: l.lead.salePrice,
+            sellingScore: l.lead.sellingScore,
+            pipelineStageId: item.stageId,
+            notes: l.notes,
+          })),
+        };
+      }
+      
+      // Initialize stages with counts and leads from summary
       const stagesWithLeads: StageWithLeads[] = pipelineStages.map(stage => ({
         ...stage,
-        leads: [],
-        count: summary[stage.id] || 0,
+        leads: summaryMap[stage.id]?.leads || [],
+        count: summaryMap[stage.id]?.count || 0,
         loading: false,
       }));
       
       setStages(stagesWithLeads);
-      
-      // Load leads for each stage that has leads
-      for (const stage of stagesWithLeads) {
-        if (stage.count > 0) {
-          loadStageLeads(stage.id);
-        }
-      }
     } catch (err) {
       console.error('Failed to load pipeline:', err);
       setError(err instanceof Error ? err.message : 'Failed to load pipeline');
@@ -464,7 +495,7 @@ export default function PipelinePage() {
                               <p className="font-medium text-sm text-gray-900">{lead.streetAddress || 'Unknown Address'}</p>
                               <p className="text-xs text-gray-500">{lead.suburb || ''}</p>
                               {lead.salePrice && (
-                                <p className="text-xs text-green-600 mt-2 font-medium">{lead.salePrice}</p>
+                                <p className="text-xs text-green-600 mt-2 font-medium">{formatPrice(lead.salePrice)}</p>
                               )}
                               {lead.sellingScore && (
                                 <div className="flex items-center mt-1">

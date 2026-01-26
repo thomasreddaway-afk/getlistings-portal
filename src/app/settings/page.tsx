@@ -1,9 +1,28 @@
 'use client';
 
 import { DemoLayout } from '@/components/layout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/client';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
+
+interface PipelineStage {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+}
+
+const defaultPipelineStages: PipelineStage[] = [
+  { id: 'new', name: 'New Lead', color: '#3B82F6', order: 0 },
+  { id: 'contacted', name: 'Contacted', color: '#8B5CF6', order: 1 },
+  { id: 'meeting', name: 'Meeting Scheduled', color: '#F59E0B', order: 2 },
+  { id: 'proposal', name: 'Proposal Sent', color: '#EC4899', order: 3 },
+  { id: 'negotiation', name: 'Negotiation', color: '#10B981', order: 4 },
+  { id: 'won', name: 'Won', color: '#22C55E', order: 5 },
+  { id: 'lost', name: 'Lost', color: '#EF4444', order: 6 },
+];
 
 type SettingsPanel = 
   | null 
@@ -343,6 +362,94 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [bio, setBio] = useState('');
   const [timezone, setTimezone] = useState('Australia/Sydney');
+  
+  // Pipeline stages state
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(defaultPipelineStages);
+  const [loadingStages, setLoadingStages] = useState(false);
+  const [savingStages, setSavingStages] = useState(false);
+
+  // Load pipeline stages when panel is pipeline
+  useEffect(() => {
+    if (panel === 'pipeline') {
+      loadPipelineStages();
+    }
+  }, [panel]);
+
+  const loadPipelineStages = async () => {
+    setLoadingStages(true);
+    try {
+      const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+      if (!token) return;
+      
+      const response = await fetch(`${API_URL}/user/pipeline-settings`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.stages && data.stages.length > 0) {
+          setPipelineStages(data.stages.sort((a: PipelineStage, b: PipelineStage) => a.order - b.order));
+        }
+      }
+    } catch (err) {
+      console.log('Using default pipeline stages');
+    } finally {
+      setLoadingStages(false);
+    }
+  };
+
+  const savePipelineStages = async (updatedStages: PipelineStage[]) => {
+    setSavingStages(true);
+    try {
+      const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+      if (!token) return;
+      
+      await fetch(`${API_URL}/user/pipeline-settings`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ stages: updatedStages }),
+      });
+    } catch (err) {
+      console.error('Failed to save pipeline stages:', err);
+    } finally {
+      setSavingStages(false);
+    }
+  };
+
+  const updateStageName = (stageId: string, newName: string) => {
+    const updated = pipelineStages.map(s => 
+      s.id === stageId ? { ...s, name: newName } : s
+    );
+    setPipelineStages(updated);
+  };
+
+  const saveStageNameChange = () => {
+    savePipelineStages(pipelineStages);
+  };
+
+  const addNewStage = () => {
+    const newStage: PipelineStage = {
+      id: `stage-${Date.now()}`,
+      name: 'New Stage',
+      color: '#6B7280',
+      order: pipelineStages.length,
+    };
+    const updated = [...pipelineStages, newStage];
+    setPipelineStages(updated);
+    savePipelineStages(updated);
+  };
+
+  const deleteStage = (stageId: string) => {
+    const updated = pipelineStages.filter(s => s.id !== stageId);
+    setPipelineStages(updated);
+    savePipelineStages(updated);
+  };
   
   const panelTitles: Record<string, string> = {
     persona: 'Agent Persona',
@@ -853,29 +960,54 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
       case 'pipeline':
         return (
           <div className="space-y-6">
-            <p className="text-sm text-gray-500">Customise your pipeline stages. Drag to reorder, edit names and colours. Changes will sync to your Pipeline view.</p>
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              {[
-                { name: 'New', color: 'bg-gray-100', count: 12 },
-                { name: 'Contacted', color: 'bg-blue-100', count: 8 },
-                { name: 'Appraisal Set', color: 'bg-purple-100', count: 4 },
-                { name: 'Listed', color: 'bg-green-100', count: 3 },
-                { name: 'Sold', color: 'bg-amber-100', count: 7 },
-              ].map((stage, idx) => (
-                <div key={stage.name} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-b-0">
-                  <div className="flex items-center space-x-3">
-                    <div className="cursor-move text-gray-400">⋮⋮</div>
-                    <div className={`w-4 h-4 ${stage.color} rounded`}></div>
-                    <input type="text" defaultValue={stage.name} className="font-medium text-gray-900 border-none focus:ring-0 p-0" />
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm text-gray-500">{stage.count} leads</span>
-                    <button className="text-gray-400 hover:text-red-500">×</button>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">Customise your pipeline stages. Edit names and they'll sync across the Portal.</p>
+              {savingStages && <span className="text-xs text-gray-400">Saving...</span>}
             </div>
-            <button className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-primary hover:text-primary">+ Add Stage</button>
+            {loadingStages ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <>
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  {pipelineStages.map((stage, idx) => (
+                    <div key={stage.id} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-b-0">
+                      <div className="flex items-center space-x-3">
+                        <div className="cursor-move text-gray-400">⋮⋮</div>
+                        <div 
+                          className="w-4 h-4 rounded" 
+                          style={{ backgroundColor: stage.color }}
+                        ></div>
+                        <input 
+                          type="text" 
+                          value={stage.name} 
+                          onChange={(e) => updateStageName(stage.id, e.target.value)}
+                          onBlur={() => saveStageNameChange()}
+                          onKeyDown={(e) => e.key === 'Enter' && saveStageNameChange()}
+                          className="font-medium text-gray-900 border-none focus:ring-2 focus:ring-primary/20 rounded px-2 py-1 -ml-2" 
+                        />
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <button 
+                          onClick={() => deleteStage(stage.id)}
+                          className="text-gray-400 hover:text-red-500 text-xl"
+                          title="Delete stage"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button 
+                  onClick={addNewStage}
+                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-primary hover:text-primary transition-colors"
+                >
+                  + Add Stage
+                </button>
+              </>
+            )}
             <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
               <p className="text-sm text-blue-700"><strong>💡 Tip:</strong> You can also edit stages directly in the Pipeline view by clicking on stage names.</p>
             </div>
