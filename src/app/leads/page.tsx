@@ -225,14 +225,19 @@ export default function LeadsPage() {
     if (signalFilter === 'valuation') insights.requested = true;
     if (signalFilter === 'neighbour') insights.neighbourSold = true;
     if (signalFilter === 'fsbo') insights.fsboListing = true;
-    if (signalFilter === 'expiring') insights.listedForSale = true; // Expiring = listed
+    
+    // Hide Sold & Listed filter - exclude leads with these flags
+    if (hideSoldListed) {
+      insights.listedForSale = false;
+      insights.recentlySold = false;
+    }
     
     if (Object.keys(insights).length > 0) {
       body.insights = insights;
     }
     
     return body;
-  }, [suburbs, searchQuery, scoreFilter, signalFilter, perPage]);
+  }, [suburbs, searchQuery, scoreFilter, signalFilter, hideSoldListed, perPage]);
 
   // Load ONLY suburbs list (fast - no counting)
   const loadSuburbsOnly = async (): Promise<Suburb[]> => {
@@ -418,10 +423,8 @@ export default function LeadsPage() {
     return sortDirection === 'desc' ? -comparison : comparison;
   });
 
-  // Client-side hide sold & listed (post-filter)
-  const displayLeads = hideSoldListed 
-    ? sortedLeads.filter(lead => !lead.listedForSale && !lead.recentlySold)
-    : sortedLeads;
+  // Use sorted leads directly - Hide Sold & Listed is now handled server-side
+  const displayLeads = sortedLeads;
 
   // Calculate pagination info
   // Use suburbCounts if available, otherwise estimate based on loaded leads
@@ -595,7 +598,6 @@ export default function LeadsPage() {
 
             {/* Signal Filters */}
             {[
-              { key: 'expiring', label: 'Expiring' },
               { key: 'listed', label: 'Listed' },
               { key: 'valuation', label: 'Valuation' },
               { key: 'neighbour', label: 'Neighbour Selling' },
