@@ -484,7 +484,7 @@ export default function PipelinePage() {
                           {stage.leads.map(lead => (
                             <Link
                               key={lead._id}
-                              href={`/properties/${lead.leadId || lead._id}`}
+                              href={`/properties/${lead._id}`}
                               draggable
                               onDragStart={(e) => handleDragStart(e, lead, stage.id)}
                               onDragEnd={handleDragEnd}

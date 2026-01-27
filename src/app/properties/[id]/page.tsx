@@ -107,11 +107,11 @@ export default function PropertyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(defaultPipelineStages);
-  const [currentStageIndex, setCurrentStageIndex] = useState(0);
+  const [currentStageIndex, setCurrentStageIndex] = useState<number | null>(null); // null = not in pipeline
   const [savingStage, setSavingStage] = useState(false);
 
   // Load pipeline stages from user settings
-  const loadPipelineStages = async (token: string) => {
+  const loadPipelineStages = async (token: string): Promise<PipelineStage[]> => {
     try {
       const response = await fetch(`${API_URL}/user/pipeline-settings`, {
         headers: {
@@ -123,11 +123,46 @@ export default function PropertyDetailPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.stages && data.stages.length > 0) {
-          setPipelineStages(data.stages.sort((a: PipelineStage, b: PipelineStage) => a.order - b.order));
+          const sortedStages = data.stages.sort((a: PipelineStage, b: PipelineStage) => a.order - b.order);
+          setPipelineStages(sortedStages);
+          return sortedStages;
         }
       }
     } catch (err) {
       console.log('Using default pipeline stages');
+    }
+    return defaultPipelineStages;
+  };
+
+  // Load pipeline summary to find lead's current stage
+  const loadLeadPipelineStage = async (token: string, leadId: string, stages: PipelineStage[]) => {
+    try {
+      const response = await fetch(`${API_URL}/lead/pipeline/summary`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.summary && Array.isArray(data.summary)) {
+          // Find the lead in any of the pipeline stages
+          for (const stageData of data.summary) {
+            const foundLead = stageData.leads?.find((l: { lead: { _id: string } }) => l.lead._id === leadId);
+            if (foundLead) {
+              // Find the index of this stage in our stages array
+              const stageIndex = stages.findIndex(s => s.id === stageData.stageId);
+              if (stageIndex !== -1) {
+                setCurrentStageIndex(stageIndex);
+                return;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.log('Could not load pipeline status for lead');
     }
   };
 
@@ -173,8 +208,11 @@ export default function PropertyDetailPage() {
           return;
         }
 
-        // Load pipeline stages first
-        await loadPipelineStages(token);
+        // Load pipeline stages first and get the stages array
+        const stages = await loadPipelineStages(token);
+
+        // Load the lead's current pipeline stage from the summary
+        await loadLeadPipelineStage(token, params.id as string, stages);
 
         const response = await fetch(`${API_URL}/lead/detail/${params.id}`, {
           headers: {
@@ -191,14 +229,6 @@ export default function PropertyDetailPage() {
         // API returns { lead: {...} }
         const leadData = data.lead || data;
         setLead(leadData);
-        
-        // Set current stage based on lead's pipelineStageId
-        if (leadData.pipelineStageId) {
-          const stageIndex = pipelineStages.findIndex(s => s.id === leadData.pipelineStageId);
-          if (stageIndex !== -1) {
-            setCurrentStageIndex(stageIndex);
-          }
-        }
       } catch (err) {
         console.error('Failed to load lead:', err);
         setError(err instanceof Error ? err.message : 'Failed to load lead');
@@ -607,8 +637,9 @@ export default function PropertyDetailPage() {
                   <div className="flex items-center overflow-x-auto pb-2 pt-3">
                     {pipelineStages.slice(0, 6).map((stage, idx) => {
                       const StageIcon = getStageIcon(stage);
-                      const isActive = idx <= currentStageIndex;
-                      const isCurrent = idx === currentStageIndex;
+                      const isInPipeline = currentStageIndex !== null;
+                      const isActive = isInPipeline && idx <= currentStageIndex;
+                      const isCurrent = isInPipeline && idx === currentStageIndex;
                       
                       return (
                         <div key={stage.id} className="flex-1 relative min-w-[60px]">
@@ -639,7 +670,9 @@ export default function PropertyDetailPage() {
                       );
                     })}
                   </div>
-                  <p className="text-xs text-gray-400 mt-3 text-center">Click a stage to update this lead's progress</p>
+                  <p className="text-xs text-gray-400 mt-3 text-center">
+                    {currentStageIndex === null ? 'Click a stage to add this lead to your pipeline' : 'Click a stage to update this lead\'s progress'}
+                  </p>
                 </div>
                 
                 {/* Instant Appraisal CTA */}
@@ -653,7 +686,17 @@ export default function PropertyDetailPage() {
                       <p className="text-white/70 text-xs">Generate in seconds</p>
                     </div>
                   </div>
-                  <button className="w-full py-2.5 bg-white text-primary font-bold text-sm rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2 shadow-sm">
+                  <button 
+                    onClick={() => {
+                      // Generate agent slug and property slug for URL
+                      const agentSlug = 'agent'; // In production, use actual agent name
+                      const propertySlug = encodeURIComponent(
+                        (lead?.streetAddress || 'property').toLowerCase().replace(/\s+/g, '-')
+                      );
+                      router.push(`/report/${agentSlug}/${propertySlug}`);
+                    }}
+                    className="w-full py-2.5 bg-white text-primary font-bold text-sm rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2 shadow-sm"
+                  >
                     <Sparkles className="w-4 h-4" />
                     <span>Generate Report</span>
                   </button>

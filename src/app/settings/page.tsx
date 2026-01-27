@@ -363,10 +363,112 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
   const [bio, setBio] = useState('');
   const [timezone, setTimezone] = useState('Australia/Sydney');
   
+  // Personal details state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [agency, setAgency] = useState('');
+  const [position, setPosition] = useState('');
+  const [savingPersonal, setSavingPersonal] = useState(false);
+  
+  // Branding state for Instant Appraisal Reports
+  const [agentPhoto, setAgentPhoto] = useState<string>('');
+  const [agencyLogo, setAgencyLogo] = useState<string>('');
+  const [primaryColor, setPrimaryColor] = useState('#c8102e');
+  const [secondaryColor, setSecondaryColor] = useState('#1a1a1a');
+  const [agentTagline, setAgentTagline] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  
   // Pipeline stages state
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(defaultPipelineStages);
   const [loadingStages, setLoadingStages] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
+  const [draggedStageIndex, setDraggedStageIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
+  // Load saved branding on mount
+  useEffect(() => {
+    const savedBranding = localStorage.getItem('agentBranding');
+    if (savedBranding) {
+      const branding = JSON.parse(savedBranding);
+      setAgentPhoto(branding.agentPhoto || '');
+      setAgencyLogo(branding.agencyLogo || '');
+      setPrimaryColor(branding.primaryColor || '#c8102e');
+      setSecondaryColor(branding.secondaryColor || '#1a1a1a');
+      setAgentTagline(branding.agentTagline || '');
+      setLicenseNumber(branding.licenseNumber || '');
+    }
+    const savedPersona = localStorage.getItem('agentPersona');
+    if (savedPersona) {
+      const persona = JSON.parse(savedPersona);
+      setPersonaStyle(persona.personaStyle || 'professional');
+      setReaUrl(persona.reaUrl || '');
+      setDomainUrl(persona.domainUrl || '');
+      setWebsiteUrl(persona.websiteUrl || '');
+      setBio(persona.bio || '');
+    }
+  }, []);
+
+  // Load personal details from localStorage and API
+  useEffect(() => {
+    console.log('Personal details useEffect running, panel:', panel);
+    if (panel !== 'personal') return;
+    
+    // Load from localStorage immediately
+    const savedUser = localStorage.getItem('propdeals_user');
+    console.log('Raw localStorage propdeals_user:', savedUser);
+    
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        console.log('Parsed user:', user);
+        setFirstName(user.firstName || '');
+        setLastName(user.lastName || '');
+        setEmail(user.email || '');
+        setPhone(user.phone || '');
+        setAgency(user.agency || user.agencyName || '');
+        setPosition(user.position || user.role || '');
+      } catch (e) {
+        console.error('Failed to parse user:', e);
+      }
+    }
+    
+    // Then try to get fresh data from API
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+        console.log('Token exists:', !!token);
+        if (token) {
+          const response = await fetch(`${API_URL}/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const profile = await response.json();
+            console.log('Loaded profile from API:', profile);
+            if (profile.firstName) setFirstName(profile.firstName);
+            if (profile.first_name) setFirstName(profile.first_name);
+            if (profile.lastName) setLastName(profile.lastName);
+            if (profile.last_name) setLastName(profile.last_name);
+            if (profile.email) setEmail(profile.email);
+            if (profile.phone || profile.mobile || profile.phoneNumber) {
+              setPhone(profile.phone || profile.mobile || profile.phoneNumber);
+            }
+            if (profile.agency || profile.agencyName || profile.businessName) {
+              setAgency(profile.agency || profile.agencyName || profile.businessName);
+            }
+            if (profile.position || profile.title || profile.role) {
+              setPosition(profile.position || profile.title || profile.role);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load profile from API:', err);
+      }
+    };
+    
+    fetchProfile();
+  }, [panel]);
 
   // Load pipeline stages when panel is pipeline
   useEffect(() => {
@@ -422,6 +524,55 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     }
   };
 
+  const savePersonalDetails = async () => {
+    setSavingPersonal(true);
+    try {
+      // Save to localStorage first
+      const savedUser = localStorage.getItem('propdeals_user');
+      const user = savedUser ? JSON.parse(savedUser) : {};
+      const updatedUser = {
+        ...user,
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName}`.trim(),
+        email,
+        phone,
+        agency,
+        agencyName: agency, // Also save as agencyName for compatibility
+        position,
+      };
+      localStorage.setItem('propdeals_user', JSON.stringify(updatedUser));
+      console.log('Saved user to localStorage:', updatedUser);
+      
+      // Try to save to API as well
+      const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+      if (token) {
+        await fetch(`${API_URL}/profile`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            email,
+            phone,
+            agency,
+            position,
+          }),
+        });
+      }
+      
+      alert('Personal details saved successfully!');
+    } catch (err) {
+      console.error('Failed to save personal details:', err);
+      alert('Saved locally. API sync may have failed.');
+    } finally {
+      setSavingPersonal(false);
+    }
+  };
+
   const updateStageName = (stageId: string, newName: string) => {
     const updated = pipelineStages.map(s => 
       s.id === stageId ? { ...s, name: newName } : s
@@ -450,6 +601,52 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     setPipelineStages(updated);
     savePipelineStages(updated);
   };
+
+  // Drag and drop handlers for reordering stages
+  const handleStageDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedStageIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleStageDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleStageDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleStageDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedStageIndex === null || draggedStageIndex === dropIndex) {
+      setDraggedStageIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    // Reorder the stages
+    const newStages = [...pipelineStages];
+    const [draggedItem] = newStages.splice(draggedStageIndex, 1);
+    newStages.splice(dropIndex, 0, draggedItem);
+
+    // Update order property for all stages
+    const reorderedStages = newStages.map((stage, idx) => ({
+      ...stage,
+      order: idx,
+    }));
+
+    setPipelineStages(reorderedStages);
+    savePipelineStages(reorderedStages);
+    setDraggedStageIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleStageDragEnd = () => {
+    setDraggedStageIndex(null);
+    setDragOverIndex(null);
+  };
   
   const panelTitles: Record<string, string> = {
     persona: 'Agent Persona',
@@ -469,11 +666,38 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     // Save to localStorage for now
     if (panel === 'persona') {
       localStorage.setItem('agentPersona', JSON.stringify({ personaStyle, reaUrl, domainUrl, websiteUrl, bio }));
+      localStorage.setItem('agentBranding', JSON.stringify({ 
+        agentPhoto, agencyLogo, primaryColor, secondaryColor, agentTagline, licenseNumber 
+      }));
+      alert('Settings saved!');
+      onClose();
     } else if (panel === 'timezone') {
       localStorage.setItem('userTimezone', timezone);
+      alert('Settings saved!');
+      onClose();
+    } else if (panel === 'personal') {
+      savePersonalDetails();
+      onClose();
+    } else {
+      alert('Settings saved!');
+      onClose();
     }
-    alert('Settings saved!');
-    onClose();
+  };
+  
+  // Handle image upload (convert to base64)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (value: string) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Image must be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setter(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const renderPanelContent = () => {
@@ -575,6 +799,161 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
                 placeholder="I'm a local real estate agent with 10 years of experience..."
               />
             </div>
+
+            {/* Branding for Appraisal Reports */}
+            <div className="bg-gradient-to-br from-primary/5 to-red-50 rounded-xl border border-primary/20 p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">Instant Appraisal Report Branding</h3>
+                  <p className="text-sm text-gray-500">Your branding will appear on generated appraisal reports</p>
+                </div>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Photo & Logo Uploads */}
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Agent Photo */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Your Headshot</label>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                        {agentPhoto ? (
+                          <img src={agentPhoto} alt="Agent" className="w-full h-full object-cover" />
+                        ) : (
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          Upload Photo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleImageUpload(e, setAgentPhoto)}
+                          />
+                        </label>
+                        {agentPhoto && (
+                          <button 
+                            onClick={() => setAgentPhoto('')}
+                            className="ml-2 text-sm text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Agency Logo */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Agency Logo</label>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-20 h-20 rounded-lg bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                        {agencyLogo ? (
+                          <img src={agencyLogo} alt="Agency Logo" className="w-full h-full object-contain p-1" />
+                        ) : (
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          Upload Logo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleImageUpload(e, setAgencyLogo)}
+                          />
+                        </label>
+                        {agencyLogo && (
+                          <button 
+                            onClick={() => setAgencyLogo('')}
+                            className="ml-2 text-sm text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Brand Colors */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Brand Colors</label>
+                  <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Primary</p>
+                        <p className="text-xs text-gray-500">{primaryColor}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Secondary</p>
+                        <p className="text-xs text-gray-500">{secondaryColor}</p>
+                      </div>
+                    </div>
+                    {/* Preview */}
+                    <div className="flex-1 flex justify-end">
+                      <div 
+                        className="px-4 py-2 rounded-lg text-white text-sm font-medium"
+                        style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
+                      >
+                        Preview
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Tagline & License */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Personal Tagline (optional)</label>
+                    <input
+                      type="text"
+                      value={agentTagline}
+                      onChange={(e) => setAgentTagline(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                      placeholder="Your local property expert"
+                      maxLength={100}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">License Number (optional)</label>
+                    <input
+                      type="text"
+                      value={licenseNumber}
+                      onChange={(e) => setLicenseNumber(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                      placeholder="e.g. 12345678"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         );
 
@@ -584,30 +963,18 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
             {/* Profile Card */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center space-x-6">
-                <div className="w-24 h-24 bg-primary rounded-full flex items-center justify-center text-white text-3xl font-bold">TR</div>
+                <div className="w-24 h-24 bg-primary rounded-full flex items-center justify-center text-white text-3xl font-bold">
+                  {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : 'TR'}
+                </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-bold text-gray-900">Tom Reddaway</h2>
-                  <p className="text-gray-500">Agent</p>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {firstName || lastName ? `${firstName} ${lastName}`.trim() : 'Your Name'}
+                  </h2>
+                  <p className="text-gray-500">{position || 'Agent'}</p>
                   <div className="flex items-center space-x-4 mt-3">
                     <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">Pro Member</span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                <p className="text-3xl font-bold text-primary">-</p>
-                <p className="text-sm text-gray-500 mt-1">Leads Unlocked</p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                <p className="text-3xl font-bold text-primary">-</p>
-                <p className="text-sm text-gray-500 mt-1">Listings Won</p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                <p className="text-3xl font-bold text-primary">-</p>
-                <p className="text-sm text-gray-500 mt-1">Your Ranking</p>
               </div>
             </div>
 
@@ -618,29 +985,65 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-500 mb-1">First Name</label>
-                    <input type="text" placeholder="First name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" />
+                    <input 
+                      type="text" 
+                      placeholder="First name" 
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" 
+                    />
                   </div>
                   <div>
                     <label className="block text-sm text-gray-500 mb-1">Last Name</label>
-                    <input type="text" placeholder="Last name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" />
+                    <input 
+                      type="text" 
+                      placeholder="Last name" 
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" 
+                    />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-500 mb-1">Email</label>
-                  <input type="email" placeholder="Email address" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" />
+                  <input 
+                    type="email" 
+                    placeholder="Email address" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-500 mb-1">Phone</label>
-                  <input type="tel" placeholder="Phone number" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" />
+                  <input 
+                    type="tel" 
+                    placeholder="Phone number" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" 
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-500 mb-1">Agency</label>
-                    <input type="text" placeholder="Agency name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" />
+                    <input 
+                      type="text" 
+                      placeholder="Agency name" 
+                      value={agency}
+                      onChange={(e) => setAgency(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" 
+                    />
                   </div>
                   <div>
                     <label className="block text-sm text-gray-500 mb-1">Position / Title</label>
-                    <input type="text" placeholder="e.g. Sales Agent" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" />
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Sales Agent" 
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary" 
+                    />
                   </div>
                 </div>
               </div>
@@ -972,9 +1375,22 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
               <>
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                   {pipelineStages.map((stage, idx) => (
-                    <div key={stage.id} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-b-0">
+                    <div 
+                      key={stage.id} 
+                      draggable
+                      onDragStart={(e) => handleStageDragStart(e, idx)}
+                      onDragOver={(e) => handleStageDragOver(e, idx)}
+                      onDragLeave={handleStageDragLeave}
+                      onDrop={(e) => handleStageDrop(e, idx)}
+                      onDragEnd={handleStageDragEnd}
+                      className={`flex items-center justify-between p-4 border-b border-gray-100 last:border-b-0 transition-all ${
+                        draggedStageIndex === idx ? 'opacity-50 bg-gray-50' : ''
+                      } ${
+                        dragOverIndex === idx && draggedStageIndex !== idx ? 'border-t-2 border-t-primary' : ''
+                      }`}
+                    >
                       <div className="flex items-center space-x-3">
-                        <div className="cursor-move text-gray-400">⋮⋮</div>
+                        <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 select-none">⋮⋮</div>
                         <div 
                           className="w-4 h-4 rounded" 
                           style={{ backgroundColor: stage.color }}

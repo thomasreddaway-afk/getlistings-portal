@@ -1,237 +1,735 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DemoLayout } from '@/components/layout/DemoLayout';
+import { 
+  Sparkles, Download, Lock, Crown, Check, ChevronRight, 
+  Image as ImageIcon, Wand2, Palette, Share2, 
+  X, Home, DollarSign, Key, Calendar
+} from 'lucide-react';
 
-// Template types for filtering
-type TemplateType = 'all' | 'just-listed' | 'sold' | 'for-lease' | 'leased' | 'open-home' | 'price-reduced' | 'agent';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
 
-interface Template {
+// Template categories with icons
+type TemplateCategory = 'just-listed' | 'sold' | 'for-lease' | 'leased' | 'open-home' | 'price-reduced';
+
+interface TemplateStyle {
   id: string;
   name: string;
-  type: TemplateType;
-  image: string;
-  downloads: number;
+  category: TemplateCategory;
+  isPremium: boolean;
   isNew?: boolean;
-  isPremium?: boolean;
+  primaryColor: string;
+  secondaryColor: string;
+  textColor: string;
+  badgeStyle: 'banner' | 'corner' | 'overlay' | 'minimal' | 'bold' | 'elegant';
+  layout: 'full' | 'split' | 'framed' | 'polaroid' | 'magazine';
 }
 
-// Mock templates data
-const mockTemplates: Template[] = [
-  { id: '1', name: 'Modern Minimalist', type: 'just-listed', image: '/templates/just-listed-1.jpg', downloads: 1234, isNew: true },
-  { id: '2', name: 'Luxury Estate', type: 'just-listed', image: '/templates/just-listed-2.jpg', downloads: 987, isPremium: true },
-  { id: '3', name: 'Urban Living', type: 'just-listed', image: '/templates/just-listed-3.jpg', downloads: 756 },
-  { id: '4', name: 'Family Home', type: 'just-listed', image: '/templates/just-listed-4.jpg', downloads: 543 },
-  { id: '5', name: 'Celebration', type: 'sold', image: '/templates/sold-1.jpg', downloads: 2341, isNew: true },
-  { id: '6', name: 'Success Story', type: 'sold', image: '/templates/sold-2.jpg', downloads: 1876 },
-  { id: '7', name: 'Record Breaker', type: 'sold', image: '/templates/sold-3.jpg', downloads: 1543, isPremium: true },
-  { id: '8', name: 'Happy Clients', type: 'sold', image: '/templates/sold-4.jpg', downloads: 1232 },
-  { id: '9', name: 'Available Now', type: 'for-lease', image: '/templates/lease-1.jpg', downloads: 654 },
-  { id: '10', name: 'Investment Ready', type: 'for-lease', image: '/templates/lease-2.jpg', downloads: 543 },
-  { id: '11', name: 'Leased Fast', type: 'leased', image: '/templates/leased-1.jpg', downloads: 432 },
-  { id: '12', name: 'Tenant Found', type: 'leased', image: '/templates/leased-2.jpg', downloads: 321 },
-  { id: '13', name: 'Open This Weekend', type: 'open-home', image: '/templates/open-1.jpg', downloads: 876, isNew: true },
-  { id: '14', name: 'Inspection Times', type: 'open-home', image: '/templates/open-2.jpg', downloads: 765 },
-  { id: '15', name: 'Open Home Countdown', type: 'open-home', image: '/templates/open-3.jpg', downloads: 654, isPremium: true },
-  { id: '16', name: 'Price Drop Alert', type: 'price-reduced', image: '/templates/reduced-1.jpg', downloads: 543 },
-  { id: '17', name: 'New Price', type: 'price-reduced', image: '/templates/reduced-2.jpg', downloads: 432, isNew: true },
-  { id: '18', name: 'Value Update', type: 'price-reduced', image: '/templates/reduced-3.jpg', downloads: 321 },
-  { id: '19', name: 'Agent Spotlight', type: 'agent', image: '/templates/agent-1.jpg', downloads: 2345, isPremium: true },
-  { id: '20', name: 'Team Profile', type: 'agent', image: '/templates/agent-2.jpg', downloads: 1987 },
-  { id: '21', name: 'Personal Brand', type: 'agent', image: '/templates/agent-3.jpg', downloads: 1654 },
-  { id: '22', name: 'Expert Bio', type: 'agent', image: '/templates/agent-4.jpg', downloads: 1432 },
-  { id: '23', name: 'Clean Lines', type: 'just-listed', image: '/templates/just-listed-5.jpg', downloads: 876 },
-  { id: '24', name: 'Premium Property', type: 'just-listed', image: '/templates/just-listed-6.jpg', downloads: 765, isPremium: true },
-  { id: '25', name: 'Dream Home', type: 'sold', image: '/templates/sold-5.jpg', downloads: 654 },
-  { id: '26', name: 'Milestone', type: 'sold', image: '/templates/sold-6.jpg', downloads: 543, isNew: true },
-  { id: '27', name: 'Commercial Ready', type: 'for-lease', image: '/templates/lease-3.jpg', downloads: 432 },
-  { id: '28', name: 'Executive Suite', type: 'for-lease', image: '/templates/lease-4.jpg', downloads: 321, isPremium: true },
-  { id: '29', name: 'Public Open', type: 'open-home', image: '/templates/open-4.jpg', downloads: 765 },
-  { id: '30', name: 'Bargain Alert', type: 'price-reduced', image: '/templates/reduced-4.jpg', downloads: 543 },
+interface PropertyData {
+  _id: string;
+  streetAddress: string;
+  suburb: string;
+  state?: string;
+  postCode?: string;
+  salePrice?: string;
+  bed?: number;
+  bath?: number;
+  car?: number;
+  propertyType?: string;
+  imageUrl?: string;
+}
+
+// Pre-designed template styles
+const templateStyles: TemplateStyle[] = [
+  // Just Listed - 2 free, 4 premium
+  { id: 'jl-modern', name: 'Modern Bold', category: 'just-listed', isPremium: false, primaryColor: '#E53935', secondaryColor: '#1a1a1a', textColor: '#ffffff', badgeStyle: 'banner', layout: 'full' },
+  { id: 'jl-minimal', name: 'Clean Minimal', category: 'just-listed', isPremium: false, isNew: true, primaryColor: '#ffffff', secondaryColor: '#000000', textColor: '#000000', badgeStyle: 'minimal', layout: 'framed' },
+  { id: 'jl-luxury', name: 'Luxury Gold', category: 'just-listed', isPremium: true, primaryColor: '#D4AF37', secondaryColor: '#1a1a1a', textColor: '#ffffff', badgeStyle: 'elegant', layout: 'magazine' },
+  { id: 'jl-coastal', name: 'Coastal Blue', category: 'just-listed', isPremium: true, primaryColor: '#0077B6', secondaryColor: '#CAF0F8', textColor: '#ffffff', badgeStyle: 'corner', layout: 'split' },
+  { id: 'jl-urban', name: 'Urban Edge', category: 'just-listed', isPremium: true, primaryColor: '#6C63FF', secondaryColor: '#2D2D2D', textColor: '#ffffff', badgeStyle: 'bold', layout: 'full' },
+  { id: 'jl-nature', name: 'Natural Living', category: 'just-listed', isPremium: true, primaryColor: '#2D6A4F', secondaryColor: '#D8F3DC', textColor: '#ffffff', badgeStyle: 'overlay', layout: 'polaroid' },
+  
+  // Sold - 2 free, 4 premium  
+  { id: 'sold-celebrate', name: 'Celebration', category: 'sold', isPremium: false, primaryColor: '#4CAF50', secondaryColor: '#1a1a1a', textColor: '#ffffff', badgeStyle: 'banner', layout: 'full' },
+  { id: 'sold-success', name: 'Success Story', category: 'sold', isPremium: false, primaryColor: '#E53935', secondaryColor: '#ffffff', textColor: '#E53935', badgeStyle: 'bold', layout: 'framed' },
+  { id: 'sold-record', name: 'Record Breaker', category: 'sold', isPremium: true, isNew: true, primaryColor: '#FFD700', secondaryColor: '#1a1a1a', textColor: '#FFD700', badgeStyle: 'elegant', layout: 'magazine' },
+  { id: 'sold-premium', name: 'Premium Result', category: 'sold', isPremium: true, primaryColor: '#9C27B0', secondaryColor: '#F3E5F5', textColor: '#ffffff', badgeStyle: 'corner', layout: 'split' },
+  { id: 'sold-modern', name: 'Modern Sold', category: 'sold', isPremium: true, primaryColor: '#00BCD4', secondaryColor: '#1a1a1a', textColor: '#ffffff', badgeStyle: 'overlay', layout: 'full' },
+  { id: 'sold-classic', name: 'Classic Elegance', category: 'sold', isPremium: true, primaryColor: '#795548', secondaryColor: '#EFEBE9', textColor: '#ffffff', badgeStyle: 'minimal', layout: 'polaroid' },
+  
+  // For Lease - 2 free, 2 premium
+  { id: 'lease-available', name: 'Available Now', category: 'for-lease', isPremium: false, primaryColor: '#2196F3', secondaryColor: '#E3F2FD', textColor: '#ffffff', badgeStyle: 'banner', layout: 'full' },
+  { id: 'lease-modern', name: 'Modern Rental', category: 'for-lease', isPremium: false, primaryColor: '#607D8B', secondaryColor: '#ffffff', textColor: '#ffffff', badgeStyle: 'minimal', layout: 'framed' },
+  { id: 'lease-premium', name: 'Executive Living', category: 'for-lease', isPremium: true, primaryColor: '#1a1a1a', secondaryColor: '#D4AF37', textColor: '#D4AF37', badgeStyle: 'elegant', layout: 'magazine' },
+  { id: 'lease-invest', name: 'Investment Ready', category: 'for-lease', isPremium: true, primaryColor: '#388E3C', secondaryColor: '#C8E6C9', textColor: '#ffffff', badgeStyle: 'bold', layout: 'split' },
+  
+  // Leased - 2 free, 2 premium
+  { id: 'leased-fast', name: 'Leased Fast', category: 'leased', isPremium: false, primaryColor: '#8BC34A', secondaryColor: '#1a1a1a', textColor: '#ffffff', badgeStyle: 'banner', layout: 'full' },
+  { id: 'leased-done', name: 'Successfully Leased', category: 'leased', isPremium: false, primaryColor: '#009688', secondaryColor: '#E0F2F1', textColor: '#ffffff', badgeStyle: 'corner', layout: 'framed' },
+  { id: 'leased-premium', name: 'Premium Tenant', category: 'leased', isPremium: true, primaryColor: '#3F51B5', secondaryColor: '#C5CAE9', textColor: '#ffffff', badgeStyle: 'elegant', layout: 'magazine' },
+  { id: 'leased-quick', name: 'Quick Result', category: 'leased', isPremium: true, primaryColor: '#FF5722', secondaryColor: '#FBE9E7', textColor: '#ffffff', badgeStyle: 'bold', layout: 'split' },
+  
+  // Open Home - 2 free, 2 premium
+  { id: 'open-weekend', name: 'Open This Weekend', category: 'open-home', isPremium: false, primaryColor: '#FF9800', secondaryColor: '#1a1a1a', textColor: '#ffffff', badgeStyle: 'banner', layout: 'full' },
+  { id: 'open-inspect', name: 'Inspection Invite', category: 'open-home', isPremium: false, isNew: true, primaryColor: '#E91E63', secondaryColor: '#FCE4EC', textColor: '#ffffff', badgeStyle: 'overlay', layout: 'framed' },
+  { id: 'open-exclusive', name: 'Exclusive Viewing', category: 'open-home', isPremium: true, primaryColor: '#1a1a1a', secondaryColor: '#D4AF37', textColor: '#D4AF37', badgeStyle: 'elegant', layout: 'magazine' },
+  { id: 'open-urgent', name: 'Don\'t Miss Out', category: 'open-home', isPremium: true, primaryColor: '#F44336', secondaryColor: '#FFEBEE', textColor: '#ffffff', badgeStyle: 'bold', layout: 'split' },
+  
+  // Price Reduced - 2 free, 2 premium
+  { id: 'reduced-alert', name: 'Price Drop Alert', category: 'price-reduced', isPremium: false, primaryColor: '#F44336', secondaryColor: '#FFEB3B', textColor: '#ffffff', badgeStyle: 'banner', layout: 'full' },
+  { id: 'reduced-value', name: 'New Value', category: 'price-reduced', isPremium: false, primaryColor: '#4CAF50', secondaryColor: '#ffffff', textColor: '#4CAF50', badgeStyle: 'corner', layout: 'framed' },
+  { id: 'reduced-urgent', name: 'Must Sell', category: 'price-reduced', isPremium: true, primaryColor: '#FF5722', secondaryColor: '#1a1a1a', textColor: '#ffffff', badgeStyle: 'bold', layout: 'magazine' },
+  { id: 'reduced-deal', name: 'Great Deal', category: 'price-reduced', isPremium: true, primaryColor: '#9C27B0', secondaryColor: '#F3E5F5', textColor: '#ffffff', badgeStyle: 'elegant', layout: 'split' },
 ];
 
-const filterOptions: { id: TemplateType; label: string }[] = [
-  { id: 'all', label: 'All Templates' },
-  { id: 'just-listed', label: 'Just Listed' },
-  { id: 'sold', label: 'Sold' },
-  { id: 'for-lease', label: 'For Lease' },
-  { id: 'leased', label: 'Leased' },
-  { id: 'open-home', label: 'Open Home' },
-  { id: 'price-reduced', label: 'Price Reduced' },
-  { id: 'agent', label: 'Agent Profile' },
-];
+const categoryInfo: Record<TemplateCategory, { label: string; icon: typeof Home; color: string; gradient: string }> = {
+  'just-listed': { label: 'Just Listed', icon: Home, color: '#E53935', gradient: 'from-red-500 to-red-600' },
+  'sold': { label: 'Sold', icon: DollarSign, color: '#4CAF50', gradient: 'from-green-500 to-green-600' },
+  'for-lease': { label: 'For Lease', icon: Key, color: '#2196F3', gradient: 'from-blue-500 to-blue-600' },
+  'leased': { label: 'Leased', icon: Check, color: '#8BC34A', gradient: 'from-lime-500 to-lime-600' },
+  'open-home': { label: 'Open Home', icon: Calendar, color: '#FF9800', gradient: 'from-orange-500 to-orange-600' },
+  'price-reduced': { label: 'Price Reduced', icon: DollarSign, color: '#F44336', gradient: 'from-red-500 to-pink-500' },
+};
+
+// Format price
+const formatPrice = (price?: string): string => {
+  if (!price) return '';
+  const num = parseFloat(price.replace(/[$,]/g, ''));
+  if (isNaN(num)) return price;
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
+};
 
 export default function MarketingPage() {
-  const [activeFilter, setActiveFilter] = useState<TemplateType>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>('all');
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateStyle | null>(null);
+  const [properties, setProperties] = useState<PropertyData[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const filteredTemplates = mockTemplates.filter((template) => {
-    const matchesFilter = activeFilter === 'all' || template.type === activeFilter;
-    const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  // Load user's properties from pipeline
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    setLoadingProperties(true);
+    try {
+      const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+      if (!token) return;
+
+      const response = await fetch(`${API_URL}/lead/pipeline/summary`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.summary && Array.isArray(data.summary)) {
+          const allLeads: PropertyData[] = [];
+          data.summary.forEach((stage: { leads: Array<{ lead: PropertyData }> }) => {
+            stage.leads?.forEach(l => {
+              if (l.lead) {
+                allLeads.push(l.lead);
+              }
+            });
+          });
+          setProperties(allLeads);
+          if (allLeads.length > 0) {
+            setSelectedProperty(allLeads[0]);
+          }
+        }
+      }
+    } catch (err) {
+      console.log('Could not load properties');
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  const handleTemplateClick = (template: TemplateStyle) => {
+    if (template.isPremium) {
+      setShowUpgradeModal(true);
+    } else {
+      setSelectedTemplate(template);
+      setShowEditor(true);
+    }
+  };
+
+  const generateImage = async () => {
+    if (!selectedTemplate || !selectedProperty || !canvasRef.current) return;
+    
+    setGenerating(true);
+    
+    // Small delay for UX
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size (Instagram square)
+    canvas.width = 1080;
+    canvas.height = 1080;
+
+    const template = selectedTemplate;
+    const property = selectedProperty;
+    const catInfo = categoryInfo[template.category];
+
+    // Draw background
+    ctx.fillStyle = template.secondaryColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw property image placeholder (gradient background for now)
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#667eea');
+    gradient.addColorStop(1, '#764ba2');
+    
+    if (template.layout === 'full') {
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (template.layout === 'framed') {
+      ctx.fillStyle = template.primaryColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(60, 60, canvas.width - 120, canvas.height - 200);
+    } else if (template.layout === 'split') {
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height * 0.65);
+      ctx.fillStyle = template.primaryColor;
+      ctx.fillRect(0, canvas.height * 0.65, canvas.width, canvas.height * 0.35);
+    } else if (template.layout === 'polaroid') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.shadowColor = 'rgba(0,0,0,0.2)';
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(80, 80, canvas.width - 160, canvas.height - 250);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = gradient;
+      ctx.fillRect(100, 100, canvas.width - 200, canvas.height - 350);
+    } else if (template.layout === 'magazine') {
+      ctx.fillStyle = template.secondaryColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width * 0.6, canvas.height);
+    }
+
+    // Draw banner/badge based on style
+    ctx.fillStyle = template.primaryColor;
+    if (template.badgeStyle === 'banner') {
+      ctx.fillRect(0, canvas.height - 280, canvas.width, 200);
+    } else if (template.badgeStyle === 'corner') {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(350, 0);
+      ctx.lineTo(0, 350);
+      ctx.closePath();
+      ctx.fill();
+    } else if (template.badgeStyle === 'bold') {
+      ctx.fillRect(60, canvas.height / 2 - 100, canvas.width - 120, 200);
+    } else if (template.badgeStyle === 'elegant') {
+      ctx.fillRect(canvas.width - 400, 80, 320, 60);
+    }
+
+    // Draw category label
+    ctx.fillStyle = template.textColor;
+    ctx.font = 'bold 72px Arial';
+    ctx.textAlign = 'center';
+    
+    if (template.badgeStyle === 'banner') {
+      ctx.fillText(catInfo.label.toUpperCase(), canvas.width / 2, canvas.height - 180);
+    } else if (template.badgeStyle === 'corner') {
+      ctx.save();
+      ctx.translate(100, 180);
+      ctx.rotate(-Math.PI / 4);
+      ctx.font = 'bold 48px Arial';
+      ctx.fillText(catInfo.label.toUpperCase(), 0, 0);
+      ctx.restore();
+    } else if (template.badgeStyle === 'bold') {
+      ctx.fillText(catInfo.label.toUpperCase(), canvas.width / 2, canvas.height / 2 + 25);
+    } else if (template.badgeStyle === 'elegant') {
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(catInfo.label.toUpperCase(), canvas.width - 100, 120);
+    } else if (template.badgeStyle === 'overlay') {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, canvas.height / 2 - 60, canvas.width, 120);
+      ctx.fillStyle = template.primaryColor;
+      ctx.fillText(catInfo.label.toUpperCase(), canvas.width / 2, canvas.height / 2 + 25);
+    } else if (template.badgeStyle === 'minimal') {
+      ctx.fillStyle = template.primaryColor;
+      ctx.font = 'bold 48px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(catInfo.label.toUpperCase(), 100, canvas.height - 180);
+    }
+
+    // Draw address
+    ctx.fillStyle = template.textColor;
+    ctx.font = 'bold 42px Arial';
+    ctx.textAlign = 'center';
+    
+    if (template.badgeStyle === 'banner') {
+      ctx.fillText(property.streetAddress, canvas.width / 2, canvas.height - 110);
+      ctx.font = '32px Arial';
+      ctx.fillText(`${property.suburb}${property.state ? ', ' + property.state : ''}`, canvas.width / 2, canvas.height - 60);
+    } else if (template.layout === 'framed') {
+      ctx.fillStyle = template.secondaryColor === '#ffffff' ? '#000000' : '#ffffff';
+      ctx.fillText(property.streetAddress, canvas.width / 2, canvas.height - 100);
+      ctx.font = '28px Arial';
+      ctx.fillText(`${property.suburb}${property.state ? ', ' + property.state : ''}`, canvas.width / 2, canvas.height - 55);
+    } else if (template.layout === 'split') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(property.streetAddress, canvas.width / 2, canvas.height * 0.75);
+      ctx.font = '28px Arial';
+      ctx.fillText(`${property.suburb}${property.state ? ', ' + property.state : ''}`, canvas.width / 2, canvas.height * 0.82);
+    } else if (template.layout === 'polaroid') {
+      ctx.fillStyle = '#333333';
+      ctx.font = 'bold 36px Arial';
+      ctx.fillText(property.streetAddress, canvas.width / 2, canvas.height - 130);
+      ctx.font = '24px Arial';
+      ctx.fillText(`${property.suburb}${property.state ? ', ' + property.state : ''}`, canvas.width / 2, canvas.height - 85);
+    } else if (template.layout === 'magazine') {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = template.textColor;
+      ctx.font = 'bold 48px Arial';
+      ctx.fillText(property.streetAddress, canvas.width * 0.65, canvas.height / 2);
+      ctx.font = '32px Arial';
+      ctx.fillText(`${property.suburb}${property.state ? ', ' + property.state : ''}`, canvas.width * 0.65, canvas.height / 2 + 50);
+    }
+
+    // Draw property details if available
+    if (property.bed || property.bath || property.car) {
+      const details = [];
+      if (property.bed) details.push(`${property.bed} Bed`);
+      if (property.bath) details.push(`${property.bath} Bath`);
+      if (property.car) details.push(`${property.car} Car`);
+      
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      if (template.layout === 'magazine') {
+        ctx.textAlign = 'left';
+        ctx.fillText(details.join('  •  '), canvas.width * 0.65, canvas.height / 2 + 100);
+      } else if (template.layout === 'split') {
+        ctx.fillText(details.join('  •  '), canvas.width / 2, canvas.height * 0.88);
+      }
+    }
+
+    // Draw price if available
+    if (property.salePrice) {
+      ctx.font = 'bold 56px Arial';
+      ctx.textAlign = 'center';
+      if (template.layout === 'magazine') {
+        ctx.textAlign = 'left';
+        ctx.fillStyle = template.primaryColor;
+        ctx.fillText(formatPrice(property.salePrice), canvas.width * 0.65, canvas.height / 2 + 170);
+      } else if (template.layout === 'split') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(formatPrice(property.salePrice), canvas.width / 2, canvas.height * 0.95);
+      }
+    }
+
+    // Convert to image
+    const imageUrl = canvas.toDataURL('image/png');
+    setGeneratedImage(imageUrl);
+    setGenerating(false);
+  };
+
+  const downloadImage = (format: 'instagram' | 'facebook' | 'linkedin') => {
+    if (!generatedImage) return;
+    
+    const link = document.createElement('a');
+    link.download = `${selectedTemplate?.category}-${selectedProperty?.streetAddress?.replace(/\s+/g, '-') || 'property'}-${format}.png`;
+    link.href = generatedImage;
+    link.click();
+  };
+
+  const filteredTemplates = selectedCategory === 'all' 
+    ? templateStyles 
+    : templateStyles.filter(t => t.category === selectedCategory);
+
+  const freeCount = filteredTemplates.filter(t => !t.isPremium).length;
+  const premiumCount = filteredTemplates.filter(t => t.isPremium).length;
 
   return (
     <DemoLayout>
-      <div className="flex-1 overflow-auto">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 py-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Content Creation</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Create beautiful marketing assets • <span>{filteredTemplates.length}</span> templates
-            </p>
+      <div className="flex-1 overflow-auto bg-gray-50">
+        {/* Hero Header */}
+        <div className="bg-gradient-to-br from-primary via-red-600 to-rose-700 text-white">
+          <div className="max-w-7xl mx-auto px-6 py-12">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                    <Wand2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold">Marketing Studio</h1>
+                    <p className="text-white/80">Create stunning social media content in seconds</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4 mt-6">
+                  <div className="flex items-center space-x-2 bg-white/10 backdrop-blur px-4 py-2 rounded-lg">
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-sm font-medium">{freeCount} Free Templates</span>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 rounded-lg">
+                    <Crown className="w-4 h-4" />
+                    <span className="text-sm font-medium">{premiumCount} Premium Templates</span>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden lg:block">
+                <div className="relative">
+                  <div className="absolute -inset-4 bg-white/10 rounded-2xl blur-xl"></div>
+                  <div className="relative grid grid-cols-3 gap-2">
+                    {['#E53935', '#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#00BCD4'].map((color, i) => (
+                      <div 
+                        key={i} 
+                        className="w-16 h-16 rounded-lg shadow-lg transform hover:scale-110 transition-transform"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="p-4 bg-gray-50 min-h-screen">
-          {/* Template Categories */}
-          <div className="flex space-x-2 mb-6 flex-wrap gap-y-2">
-            {filterOptions.map((filter) => (
+        {/* Category Tabs */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex space-x-1 py-4 overflow-x-auto">
               <button
-                key={filter.id}
-                onClick={() => setActiveFilter(filter.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeFilter === filter.id
-                    ? 'bg-primary text-white'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                onClick={() => setSelectedCategory('all')}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                  selectedCategory === 'all'
+                    ? 'bg-gray-900 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {filter.label}
+                All Templates
               </button>
-            ))}
-          </div>
-
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative max-w-md">
-              <input
-                type="text"
-                placeholder="Search templates..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              {Object.entries(categoryInfo).map(([key, info]) => {
+                const Icon = info.icon;
+                const count = templateStyles.filter(t => t.category === key).length;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedCategory(key as TemplateCategory)}
+                    className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 whitespace-nowrap ${
+                      selectedCategory === key
+                        ? `bg-gradient-to-r ${info.gradient} text-white shadow-lg`
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{info.label}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      selectedCategory === key ? 'bg-white/20' : 'bg-gray-200'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+        </div>
 
-          {/* Template Grid */}
-          <div className="grid grid-cols-4 gap-6">
-            {filteredTemplates.map((template) => (
-              <div
-                key={template.id}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer"
-              >
-                {/* Template Preview */}
-                <div className="relative aspect-[4/5] bg-gradient-to-br from-gray-100 to-gray-200">
-                  {/* Placeholder for template image */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-2 bg-gray-300 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-8 h-8 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+        {/* Templates Grid */}
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredTemplates.map((template) => {
+              const catInfo = categoryInfo[template.category];
+              return (
+                <div
+                  key={template.id}
+                  onClick={() => handleTemplateClick(template)}
+                  className="group cursor-pointer"
+                >
+                  <div className="relative aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                    {/* Template Preview */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{ 
+                        background: template.layout === 'full' 
+                          ? `linear-gradient(135deg, ${template.primaryColor}40, ${template.secondaryColor})`
+                          : template.layout === 'split'
+                          ? `linear-gradient(to bottom, #667eea 65%, ${template.primaryColor} 65%)`
+                          : template.layout === 'framed'
+                          ? template.primaryColor
+                          : template.layout === 'polaroid'
+                          ? '#ffffff'
+                          : template.layout === 'magazine'
+                          ? `linear-gradient(to right, #667eea 60%, ${template.secondaryColor} 60%)`
+                          : template.secondaryColor
+                      }}
+                    >
+                      {/* Mock property image area */}
+                      {template.layout === 'framed' && (
+                        <div 
+                          className="absolute inset-4 bottom-16 rounded-lg"
+                          style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}
+                        />
+                      )}
+                      {template.layout === 'polaroid' && (
+                        <div 
+                          className="absolute top-4 left-4 right-4 bottom-20 rounded-sm shadow-inner"
+                          style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}
+                        />
+                      )}
+                      
+                      {/* Badge/Banner */}
+                      <div 
+                        className="absolute flex items-center justify-center"
+                        style={{
+                          ...(template.badgeStyle === 'banner' && { bottom: 0, left: 0, right: 0, height: '35%', backgroundColor: template.primaryColor }),
+                          ...(template.badgeStyle === 'corner' && { top: 0, left: 0, width: '50%', height: '50%', clipPath: 'polygon(0 0, 100% 0, 0 100%)', backgroundColor: template.primaryColor }),
+                          ...(template.badgeStyle === 'bold' && { top: '35%', left: '8%', right: '8%', height: '30%', backgroundColor: template.primaryColor, borderRadius: '8px' }),
+                          ...(template.badgeStyle === 'elegant' && { top: '8%', right: '8%', padding: '8px 16px', backgroundColor: template.primaryColor, borderRadius: '4px' }),
+                          ...(template.badgeStyle === 'overlay' && { top: '35%', left: 0, right: 0, height: '30%', backgroundColor: 'rgba(0,0,0,0.7)' }),
+                          ...(template.badgeStyle === 'minimal' && { bottom: '15%', left: '8%', padding: '4px 0' }),
+                        }}
+                      >
+                        <span 
+                          className="font-bold text-xs uppercase tracking-wide"
+                          style={{ 
+                            color: template.badgeStyle === 'minimal' ? template.primaryColor : template.textColor,
+                            transform: template.badgeStyle === 'corner' ? 'rotate(-45deg) translateY(-50%)' : 'none'
+                          }}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
+                          {catInfo.label}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-400">Template Preview</p>
+                    </div>
+
+                    {/* Premium/New Badges */}
+                    <div className="absolute top-3 left-3 flex space-x-2">
+                      {template.isNew && (
+                        <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-md shadow">
+                          NEW
+                        </span>
+                      )}
+                      {template.isPremium && (
+                        <span className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-md shadow flex items-center space-x-1">
+                          <Crown className="w-3 h-3" />
+                          <span>PRO</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Lock Overlay for Premium */}
+                    {template.isPremium && (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="bg-white rounded-xl p-4 shadow-xl text-center transform scale-90 group-hover:scale-100 transition-transform">
+                          <Lock className="w-6 h-6 mx-auto mb-2 text-gray-600" />
+                          <p className="text-sm font-semibold text-gray-900">Upgrade to Unlock</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Use Button for Free */}
+                    {!template.isPremium && (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button className="bg-white text-gray-900 px-6 py-2.5 rounded-lg font-semibold shadow-xl transform scale-90 group-hover:scale-100 transition-transform flex items-center space-x-2">
+                          <Sparkles className="w-4 h-4" />
+                          <span>Use Template</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Template Name */}
+                  <div className="mt-3">
+                    <h3 className="font-semibold text-gray-900">{template.name}</h3>
+                    <p className="text-sm text-gray-500 capitalize">{template.category.replace('-', ' ')}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Hidden Canvas for Image Generation */}
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+        {/* Editor Modal */}
+        {showEditor && selectedTemplate && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex">
+              {/* Left: Preview */}
+              <div className="flex-1 bg-gray-100 p-8 flex items-center justify-center">
+                {generatedImage ? (
+                  <img src={generatedImage} alt="Generated" className="max-w-full max-h-full rounded-xl shadow-2xl" />
+                ) : (
+                  <div className="w-full aspect-square max-w-md rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                    <div className="text-center">
+                      <ImageIcon className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                      <p className="text-gray-500">Click Generate to create your image</p>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Badges */}
-                  <div className="absolute top-2 left-2 flex space-x-1">
-                    {template.isNew && (
-                      <span className="px-2 py-0.5 bg-green-500 text-white text-xs font-medium rounded">
-                        NEW
-                      </span>
-                    )}
-                    {template.isPremium && (
-                      <span className="px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-medium rounded flex items-center space-x-1">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        <span>PRO</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button className="px-6 py-2 bg-white text-gray-900 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors">
-                      Use Template
+              {/* Right: Controls */}
+              <div className="w-96 border-l border-gray-200 flex flex-col">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">{selectedTemplate.name}</h2>
+                      <p className="text-sm text-gray-500 capitalize">{selectedTemplate.category.replace('-', ' ')}</p>
+                    </div>
+                    <button 
+                      onClick={() => { setShowEditor(false); setGeneratedImage(null); }}
+                      className="p-2 hover:bg-gray-100 rounded-lg"
+                    >
+                      <X className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Template Info */}
-                <div className="p-3">
-                  <h3 className="font-semibold text-gray-900 text-sm">{template.name}</h3>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-gray-500 capitalize">
-                      {template.type.replace('-', ' ')}
-                    </span>
-                    <span className="text-xs text-gray-400 flex items-center space-x-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span>{template.downloads.toLocaleString()}</span>
-                    </span>
+                {/* Property Selection */}
+                <div className="p-6 border-b border-gray-200 flex-1 overflow-auto">
+                  <h3 className="font-semibold text-gray-900 mb-3">Select Property</h3>
+                  {loadingProperties ? (
+                    <div className="text-center py-4 text-gray-500">Loading properties...</div>
+                  ) : properties.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-gray-500 text-sm">No properties in your pipeline</p>
+                      <button className="mt-2 text-primary text-sm font-medium">Add properties →</button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {properties.map((prop) => (
+                        <button
+                          key={prop._id}
+                          onClick={() => setSelectedProperty(prop)}
+                          className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${
+                            selectedProperty?._id === prop._id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <p className="font-medium text-gray-900 text-sm">{prop.streetAddress}</p>
+                          <p className="text-xs text-gray-500">{prop.suburb}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Generate Button */}
+                <div className="p-6 border-b border-gray-200">
+                  <button
+                    onClick={generateImage}
+                    disabled={!selectedProperty || generating}
+                    className="w-full py-3 bg-gradient-to-r from-primary to-red-600 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 hover:shadow-lg transition-shadow"
+                  >
+                    {generating ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-5 h-5" />
+                        <span>Generate Image</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Download Options */}
+                {generatedImage && (
+                  <div className="p-6">
+                    <h3 className="font-semibold text-gray-900 mb-3">Download</h3>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => downloadImage('instagram')}
+                        className="w-full py-2.5 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg flex items-center space-x-3 hover:shadow-lg transition-shadow"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                        <span>Instagram (1080×1080)</span>
+                      </button>
+                      <button
+                        onClick={() => downloadImage('facebook')}
+                        className="w-full py-2.5 px-4 bg-blue-600 text-white font-medium rounded-lg flex items-center space-x-3 hover:shadow-lg transition-shadow"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        <span>Facebook Post</span>
+                      </button>
+                      <button
+                        onClick={() => downloadImage('linkedin')}
+                        className="w-full py-2.5 px-4 bg-blue-700 text-white font-medium rounded-lg flex items-center space-x-3 hover:shadow-lg transition-shadow"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                        <span>LinkedIn</span>
+                      </button>
+                    </div>
                   </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade Modal */}
+        {showUpgradeModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center">
+                <Crown className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Unlock Premium Templates</h2>
+              <p className="text-gray-500 mb-6">
+                Get access to all {templateStyles.filter(t => t.isPremium).length}+ premium templates, priority support, and unlimited downloads.
+              </p>
+              
+              <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left">
+                <div className="space-y-3">
+                  {[
+                    'All premium template designs',
+                    'Unlimited image generation',
+                    'Custom branding & colors',
+                    'Priority support',
+                    'New templates monthly',
+                  ].map((feature, i) => (
+                    <div key={i} className="flex items-center space-x-3">
+                      <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-gray-700">{feature}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Empty State */}
-          {filteredTemplates.length === 0 && (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">No templates found</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Try adjusting your search or filter criteria
-              </p>
+              <button className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl hover:shadow-lg transition-shadow mb-3">
+                Upgrade to Pro — $29/month
+              </button>
+              <button 
+                onClick={() => setShowUpgradeModal(false)}
+                className="text-gray-500 text-sm hover:text-gray-700"
+              >
+                Maybe later
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </DemoLayout>
   );
