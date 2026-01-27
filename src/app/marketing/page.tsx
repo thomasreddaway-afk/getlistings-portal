@@ -5,10 +5,46 @@ import { DemoLayout } from '@/components/layout/DemoLayout';
 import { 
   Sparkles, Download, Lock, Crown, Check, ChevronRight, 
   Image as ImageIcon, Wand2, Palette, Share2, 
-  X, Home, DollarSign, Key, Calendar
+  X, Home, DollarSign, Key, Calendar, MessageSquareQuote, Star, Quote
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
+
+// Testimonial interface - matches Settings page storage format
+interface Testimonial {
+  id: string;
+  reviewerName: string;  // "Seller in Sanctuary Cove, QLD" or actual name
+  date: string;
+  rating: number;
+  text: string;
+  propertyAddress?: string;
+  source?: string;
+  isTopFive?: boolean;
+  order?: number;
+}
+
+// Testimonial template styles
+interface TestimonialTemplateStyle {
+  id: string;
+  name: string;
+  isPremium: boolean;
+  isNew?: boolean;
+  primaryColor: string;
+  secondaryColor: string;
+  textColor: string;
+  accentColor: string;
+  style: 'modern' | 'elegant' | 'bold' | 'minimal' | 'gradient' | 'photo';
+}
+
+// Pre-designed testimonial template styles
+const testimonialTemplates: TestimonialTemplateStyle[] = [
+  { id: 'test-modern', name: 'Modern Clean', isPremium: false, primaryColor: '#ffffff', secondaryColor: '#f8fafc', textColor: '#1e293b', accentColor: '#E53935', style: 'modern' },
+  { id: 'test-minimal', name: 'Simple Minimal', isPremium: false, isNew: true, primaryColor: '#ffffff', secondaryColor: '#ffffff', textColor: '#374151', accentColor: '#6366f1', style: 'minimal' },
+  { id: 'test-bold', name: 'Bold Statement', isPremium: false, primaryColor: '#1a1a1a', secondaryColor: '#262626', textColor: '#ffffff', accentColor: '#fbbf24', style: 'bold' },
+  { id: 'test-elegant', name: 'Elegant Gold', isPremium: true, primaryColor: '#1c1917', secondaryColor: '#292524', textColor: '#fafaf9', accentColor: '#D4AF37', style: 'elegant' },
+  { id: 'test-gradient', name: 'Gradient Glow', isPremium: true, primaryColor: '#6366f1', secondaryColor: '#8b5cf6', textColor: '#ffffff', accentColor: '#fbbf24', style: 'gradient' },
+  { id: 'test-photo', name: 'Photo Background', isPremium: true, isNew: true, primaryColor: 'rgba(0,0,0,0.7)', secondaryColor: 'rgba(0,0,0,0.5)', textColor: '#ffffff', accentColor: '#E53935', style: 'photo' },
+];
 
 // Template categories with icons
 type TemplateCategory = 'just-listed' | 'sold' | 'for-lease' | 'leased' | 'open-home' | 'price-reduced';
@@ -112,10 +148,38 @@ export default function MarketingPage() {
   const [generating, setGenerating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Load user's properties from pipeline
+  // Testimonial Graphics state
+  const [activeSection, setActiveSection] = useState<'property' | 'testimonial'>('property');
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [selectedTestimonial, setSelectedTestimonial] = useState<Testimonial | null>(null);
+  const [selectedTestimonialTemplate, setSelectedTestimonialTemplate] = useState<TestimonialTemplateStyle | null>(null);
+  const [showTestimonialEditor, setShowTestimonialEditor] = useState(false);
+  const [agentBranding, setAgentBranding] = useState<{name?: string; agency?: string; phone?: string; headshot?: string; agencyLogo?: string; primaryColor?: string} | null>(null);
+  const testimonialCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Load user's properties from pipeline and testimonials
   useEffect(() => {
     loadProperties();
+    loadTestimonials();
   }, []);
+
+  const loadTestimonials = () => {
+    try {
+      const stored = localStorage.getItem('agentTestimonials');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Load ALL testimonials for the graphics creator
+        setTestimonials(parsed);
+      }
+      
+      const branding = localStorage.getItem('agentBranding');
+      if (branding) {
+        setAgentBranding(JSON.parse(branding));
+      }
+    } catch (err) {
+      console.log('Could not load testimonials');
+    }
+  };
 
   const loadProperties = async () => {
     setLoadingProperties(true);
@@ -355,6 +419,229 @@ export default function MarketingPage() {
     link.click();
   };
 
+  // Testimonial template handlers
+  const handleTestimonialTemplateClick = (template: TestimonialTemplateStyle) => {
+    if (template.isPremium) {
+      setShowUpgradeModal(true);
+    } else {
+      setSelectedTestimonialTemplate(template);
+      if (testimonials.length > 0 && !selectedTestimonial) {
+        setSelectedTestimonial(testimonials[0]);
+      }
+      setShowTestimonialEditor(true);
+    }
+  };
+
+  const generateTestimonialImage = async () => {
+    if (!selectedTestimonialTemplate || !selectedTestimonial || !testimonialCanvasRef.current) return;
+    
+    setGenerating(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const canvas = testimonialCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Instagram square size
+    canvas.width = 1080;
+    canvas.height = 1080;
+
+    const template = selectedTestimonialTemplate;
+    const testimonial = selectedTestimonial;
+
+    // Draw background based on style
+    if (template.style === 'gradient') {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, template.primaryColor);
+      gradient.addColorStop(1, template.secondaryColor);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (template.style === 'photo') {
+      // Draw a placeholder gradient for photo style
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, '#667eea');
+      gradient.addColorStop(1, '#764ba2');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Dark overlay
+      ctx.fillStyle = template.primaryColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = template.primaryColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Add decorative elements based on style
+    if (template.style === 'modern' || template.style === 'minimal') {
+      // Subtle accent bar at top
+      ctx.fillStyle = template.accentColor;
+      ctx.fillRect(0, 0, canvas.width, 8);
+    }
+
+    if (template.style === 'bold') {
+      // Bold accent shape
+      ctx.fillStyle = template.accentColor;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(200, 0);
+      ctx.lineTo(0, 200);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    if (template.style === 'elegant') {
+      // Elegant gold border
+      ctx.strokeStyle = template.accentColor;
+      ctx.lineWidth = 4;
+      ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+    }
+
+    // Draw quote icon
+    ctx.fillStyle = template.accentColor;
+    ctx.font = 'bold 120px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = template.style === 'minimal' ? 0.2 : 0.3;
+    ctx.fillText('"', canvas.width / 2, 200);
+    ctx.globalAlpha = 1;
+
+    // Draw stars
+    const starY = 280;
+    const starSize = 36;
+    const starSpacing = 50;
+    const starsStartX = canvas.width / 2 - ((testimonial.rating - 1) * starSpacing) / 2;
+    
+    ctx.fillStyle = template.accentColor;
+    ctx.font = `${starSize}px Arial`;
+    ctx.textAlign = 'center';
+    for (let i = 0; i < testimonial.rating; i++) {
+      ctx.fillText('★', starsStartX + (i * starSpacing), starY);
+    }
+
+    // Draw testimonial text with word wrapping
+    ctx.fillStyle = template.textColor;
+    ctx.font = '36px Georgia, serif';
+    ctx.textAlign = 'center';
+    
+    const maxWidth = canvas.width - 160;
+    const lineHeight = 52;
+    let text = testimonial.text;
+    if (text.length > 300) {
+      text = text.substring(0, 297) + '...';
+    }
+    
+    const words = text.split(' ');
+    let lines: string[] = [];
+    let currentLine = '';
+    
+    words.forEach(word => {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    });
+    if (currentLine) lines.push(currentLine);
+
+    // Limit to 6 lines
+    if (lines.length > 6) {
+      lines = lines.slice(0, 6);
+      lines[5] = lines[5].substring(0, lines[5].length - 3) + '...';
+    }
+
+    const textStartY = 380;
+    lines.forEach((line, index) => {
+      ctx.fillText(line, canvas.width / 2, textStartY + (index * lineHeight));
+    });
+
+    // Check if reviewer name is a real name or just a descriptor like "Seller in/of..."
+    const displayName = testimonial.reviewerName?.trim() || '';
+    const isDescriptor = displayName.toLowerCase().startsWith('seller') || 
+      displayName.toLowerCase().startsWith('buyer') ||
+      displayName.toLowerCase().startsWith('vendor') ||
+      displayName.toLowerCase().startsWith('landlord') ||
+      displayName.toLowerCase().startsWith('tenant') ||
+      displayName.toLowerCase().includes(' of ') ||
+      displayName.toLowerCase().includes(' in ') ||
+      displayName === 'Anonymous' ||
+      displayName === '' ||
+      displayName === 'Verified review' ||
+      displayName === 'Client Review';
+    
+    const isRealName = displayName.length > 0 && !isDescriptor;
+
+    let nextY = textStartY + (lines.length * lineHeight) + 60;
+
+    // Draw reviewer name only if it's a real name
+    if (isRealName) {
+      ctx.fillStyle = template.textColor;
+      ctx.font = 'bold 32px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`— ${displayName}`, canvas.width / 2, nextY);
+      nextY += 40;
+      
+      // Draw property location below real name if available
+      if (testimonial.propertyAddress) {
+        ctx.font = '24px Arial';
+        ctx.globalAlpha = 0.7;
+        ctx.fillText(testimonial.propertyAddress, canvas.width / 2, nextY);
+        ctx.globalAlpha = 1;
+      }
+    } else {
+      // For descriptors like "Seller in Sanctuary Cove, QLD", show it as the attribution
+      const attribution = displayName || testimonial.propertyAddress || '';
+      if (attribution) {
+        ctx.fillStyle = template.textColor;
+        ctx.font = '26px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`— ${attribution}`, canvas.width / 2, nextY);
+        
+        // Optionally show date if available
+        if (testimonial.date && testimonial.date !== attribution) {
+          ctx.font = '20px Arial';
+          ctx.globalAlpha = 0.6;
+          ctx.fillText(testimonial.date, canvas.width / 2, nextY + 35);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
+    // Draw agent info at bottom
+    if (agentBranding?.name) {
+      const agentY = canvas.height - 100;
+      
+      // Agent name
+      ctx.fillStyle = template.textColor;
+      ctx.font = 'bold 28px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(agentBranding.name, canvas.width / 2, agentY);
+      
+      // Agency
+      if (agentBranding.agency) {
+        ctx.font = '22px Arial';
+        ctx.globalAlpha = 0.8;
+        ctx.fillText(agentBranding.agency, canvas.width / 2, agentY + 35);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Convert to image
+    const imageUrl = canvas.toDataURL('image/png');
+    setGeneratedImage(imageUrl);
+    setGenerating(false);
+  };
+
+  const downloadTestimonialImage = () => {
+    if (!generatedImage) return;
+    
+    const link = document.createElement('a');
+    link.download = `testimonial-${selectedTestimonial?.reviewerName?.replace(/\s+/g, '-') || 'review'}.png`;
+    link.href = generatedImage;
+    link.click();
+  };
+
   const filteredTemplates = selectedCategory === 'all' 
     ? templateStyles 
     : templateStyles.filter(t => t.category === selectedCategory);
@@ -411,6 +698,37 @@ export default function MarketingPage() {
         {/* Category Tabs */}
         <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-6">
+            {/* Section Tabs - Property vs Testimonial */}
+            <div className="flex space-x-1 py-3 border-b border-gray-100">
+              <button
+                onClick={() => { setActiveSection('property'); setShowTestimonialEditor(false); setGeneratedImage(null); }}
+                className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center space-x-2 ${
+                  activeSection === 'property'
+                    ? 'bg-primary text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span>Property Graphics</span>
+              </button>
+              <button
+                onClick={() => { setActiveSection('testimonial'); setShowEditor(false); setGeneratedImage(null); }}
+                className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center space-x-2 ${
+                  activeSection === 'testimonial'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <MessageSquareQuote className="w-4 h-4" />
+                <span>Testimonial Graphics</span>
+                {testimonials.length > 0 && (
+                  <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">{testimonials.length}</span>
+                )}
+              </button>
+            </div>
+
+            {/* Property Category Tabs */}
+            {activeSection === 'property' && (
             <div className="flex space-x-1 py-4 overflow-x-auto">
               <button
                 onClick={() => setSelectedCategory('all')}
@@ -446,10 +764,13 @@ export default function MarketingPage() {
                 );
               })}
             </div>
+            )}
           </div>
         </div>
 
-        {/* Templates Grid */}
+        {/* Property Templates Grid */}
+        {activeSection === 'property' && (
+        <>
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredTemplates.map((template) => {
@@ -685,6 +1006,256 @@ export default function MarketingPage() {
               </div>
             </div>
           </div>
+        )}
+        </>
+        )}
+
+        {/* Testimonial Graphics Section */}
+        {activeSection === 'testimonial' && (
+        <>
+          <div className="max-w-7xl mx-auto px-6 py-8">
+            {testimonials.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-2xl flex items-center justify-center">
+                  <MessageSquareQuote className="w-10 h-10 text-gray-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">No Testimonials Yet</h2>
+                <p className="text-gray-500 mb-6">Add testimonials in Settings to create stunning social graphics</p>
+                <a href="/settings" className="inline-flex items-center space-x-2 bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary/90 transition">
+                  <span>Go to Settings</span>
+                  <ChevronRight className="w-4 h-4" />
+                </a>
+              </div>
+            ) : !showTestimonialEditor ? (
+              <>
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose a Template Style</h2>
+                  <p className="text-gray-500">Select a template, then pick a testimonial to create your social graphic</p>
+                </div>
+
+                {/* Testimonial Template Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
+                  {testimonialTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      onClick={() => handleTestimonialTemplateClick(template)}
+                      className="group cursor-pointer"
+                    >
+                      <div className="relative aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                        {/* Template Preview */}
+                        <div 
+                          className="absolute inset-0 flex flex-col items-center justify-center p-6"
+                          style={{ 
+                            background: template.style === 'gradient' 
+                              ? `linear-gradient(135deg, ${template.primaryColor}, ${template.secondaryColor})`
+                              : template.style === 'photo'
+                              ? `linear-gradient(135deg, #667eea, #764ba2)`
+                              : template.primaryColor
+                          }}
+                        >
+                          {/* Photo overlay */}
+                          {template.style === 'photo' && (
+                            <div className="absolute inset-0" style={{ backgroundColor: template.primaryColor }}></div>
+                          )}
+
+                          {/* Elegant border */}
+                          {template.style === 'elegant' && (
+                            <div className="absolute inset-3 border-2 rounded-lg" style={{ borderColor: template.accentColor }}></div>
+                          )}
+
+                          {/* Bold accent corner */}
+                          {template.style === 'bold' && (
+                            <div 
+                              className="absolute top-0 left-0 w-12 h-12"
+                              style={{ 
+                                backgroundColor: template.accentColor,
+                                clipPath: 'polygon(0 0, 100% 0, 0 100%)'
+                              }}
+                            ></div>
+                          )}
+
+                          {/* Modern/Minimal accent bar */}
+                          {(template.style === 'modern' || template.style === 'minimal') && (
+                            <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: template.accentColor }}></div>
+                          )}
+
+                          {/* Quote icon */}
+                          <Quote className="w-8 h-8 mb-2" style={{ color: template.accentColor, opacity: 0.5 }} />
+
+                          {/* Stars preview */}
+                          <div className="flex space-x-0.5 mb-2">
+                            {[1,2,3,4,5].map(i => (
+                              <Star key={i} className="w-3 h-3" style={{ color: template.accentColor, fill: template.accentColor }} />
+                            ))}
+                          </div>
+
+                          {/* Preview text */}
+                          <div className="text-center">
+                            <p className="text-xs leading-tight" style={{ color: template.textColor, opacity: 0.7 }}>
+                              "Amazing experience..."
+                            </p>
+                            <p className="text-[10px] mt-2 font-medium" style={{ color: template.textColor }}>— John Smith</p>
+                          </div>
+                        </div>
+
+                        {/* Premium/New Badges */}
+                        <div className="absolute top-3 left-3 flex space-x-2 z-20">
+                          {template.isNew && (
+                            <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-md shadow">NEW</span>
+                          )}
+                          {template.isPremium && (
+                            <span className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-md shadow flex items-center space-x-1">
+                              <Crown className="w-3 h-3" />
+                              <span>PRO</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Lock/Use overlay */}
+                        {template.isPremium ? (
+                          <div className="absolute inset-0 z-30 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div className="bg-white rounded-xl p-4 shadow-xl text-center transform scale-90 group-hover:scale-100 transition-transform">
+                              <Lock className="w-6 h-6 mx-auto mb-2 text-gray-600" />
+                              <p className="text-sm font-semibold text-gray-900">Upgrade to Unlock</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 z-30 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button className="bg-white text-gray-900 px-6 py-2.5 rounded-lg font-semibold shadow-xl transform scale-90 group-hover:scale-100 transition-transform flex items-center space-x-2">
+                              <Sparkles className="w-4 h-4" />
+                              <span>Use Template</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Template Name */}
+                      <div className="mt-3">
+                        <h3 className="font-semibold text-gray-900">{template.name}</h3>
+                        <p className="text-sm text-gray-500">Testimonial Template</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* Testimonial Editor */
+              <div className="max-w-5xl mx-auto">
+                <button
+                  onClick={() => { setShowTestimonialEditor(false); setGeneratedImage(null); }}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6"
+                >
+                  <ChevronRight className="w-4 h-4 rotate-180" />
+                  <span>Back to Templates</span>
+                </button>
+
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                  <div className="flex flex-col lg:flex-row">
+                    {/* Preview */}
+                    <div className="flex-1 bg-gray-100 p-8 flex items-center justify-center min-h-[400px]">
+                      {generatedImage ? (
+                        <img src={generatedImage} alt="Generated" className="max-w-full max-h-[500px] rounded-xl shadow-2xl" />
+                      ) : (
+                        <div className="w-full max-w-md aspect-square rounded-xl flex items-center justify-center" style={{
+                          background: selectedTestimonialTemplate?.style === 'gradient'
+                            ? `linear-gradient(135deg, ${selectedTestimonialTemplate.primaryColor}, ${selectedTestimonialTemplate.secondaryColor})`
+                            : selectedTestimonialTemplate?.primaryColor || '#f3f4f6'
+                        }}>
+                          <div className="text-center p-8">
+                            <Quote className="w-12 h-12 mx-auto mb-4" style={{ color: selectedTestimonialTemplate?.accentColor, opacity: 0.5 }} />
+                            <p className="text-sm mb-4" style={{ color: selectedTestimonialTemplate?.textColor }}>
+                              {selectedTestimonial?.text?.slice(0, 150) || 'Select a testimonial...'}
+                              {(selectedTestimonial?.text?.length || 0) > 150 && '...'}
+                            </p>
+                            {selectedTestimonial && (
+                              <>
+                                <div className="flex justify-center space-x-1 mb-2">
+                                  {[1,2,3,4,5].map(i => (
+                                    <Star key={i} className="w-4 h-4" style={{ 
+                                      color: selectedTestimonialTemplate?.accentColor,
+                                      fill: i <= (selectedTestimonial?.rating || 5) ? selectedTestimonialTemplate?.accentColor : 'transparent'
+                                    }} />
+                                  ))}
+                                </div>
+                                {(selectedTestimonial.reviewerName || selectedTestimonial.date) && (
+                                  <p className="text-xs font-medium" style={{ color: selectedTestimonialTemplate?.textColor }}>
+                                    — {selectedTestimonial.reviewerName || selectedTestimonial.date}
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Controls */}
+                    <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-gray-200 p-6">
+                      <h3 className="font-semibold text-gray-900 mb-4">Select Testimonial</h3>
+                      <div className="space-y-2 max-h-64 overflow-y-auto mb-6">
+                        {testimonials.map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => { setSelectedTestimonial(t); setGeneratedImage(null); }}
+                            className={`w-full text-left p-3 rounded-lg border transition-all ${
+                              selectedTestimonial?.id === t.id
+                                ? 'border-primary bg-primary/5'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-1 mb-1">
+                              {[1,2,3,4,5].map(i => (
+                                <Star key={i} className={`w-3 h-3 ${i <= t.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                              ))}
+                            </div>
+                            <p className="text-sm text-gray-700 line-clamp-2">{t.text}</p>
+                            {(t.reviewerName || t.date) && (
+                              <p className="text-xs text-gray-500 mt-1">— {t.reviewerName || t.date}</p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={generateTestimonialImage}
+                        disabled={!selectedTestimonial || generating}
+                        className="w-full py-3 bg-gradient-to-r from-primary to-red-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                      >
+                        {generating ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <span>Generating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5" />
+                            <span>Generate Image</span>
+                          </>
+                        )}
+                      </button>
+
+                      {generatedImage && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-sm font-medium text-gray-700">Download for:</p>
+                          <button
+                            onClick={downloadTestimonialImage}
+                            className="w-full py-2.5 px-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-medium rounded-lg flex items-center space-x-3 hover:shadow-lg transition-shadow"
+                          >
+                            <Download className="w-5 h-5" />
+                            <span>Download Image</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Hidden Canvas for Testimonial Image Generation */}
+          <canvas ref={testimonialCanvasRef} style={{ display: 'none' }} />
+        </>
         )}
 
         {/* Upgrade Modal */}

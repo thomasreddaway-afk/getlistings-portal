@@ -51,7 +51,20 @@ type SettingsPanel =
   | 'suburbs'
   | 'subscription'
   | 'pipeline'
+  | 'testimonials'
   | 'api';
+
+interface Testimonial {
+  id: string;
+  reviewerName: string;
+  date: string;
+  rating: number;
+  text: string;
+  propertyAddress?: string;
+  source?: string;
+  isTopFive: boolean;
+  order?: number;
+}
 
 export default function SettingsPage() {
   const [activePanel, setActivePanel] = useState<SettingsPanel>(null);
@@ -167,6 +180,18 @@ export default function SettingsPage() {
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+            </svg>
+          ),
+        },
+        { 
+          id: 'testimonials', 
+          label: 'Testimonial database', 
+          description: 'Import and manage client reviews for your reports.',
+          iconBg: 'bg-yellow-100',
+          iconColor: 'text-yellow-600',
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
           ),
         },
@@ -370,6 +395,14 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
   const [maxSuburbs, setMaxSuburbs] = useState(4);
   const [suburbPlanName, setSuburbPlanName] = useState('4 Suburb Plan');
   
+  // Testimonials state
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [bulkPasteText, setBulkPasteText] = useState('');
+  const [parsingTestimonials, setParsingTestimonials] = useState(false);
+  const [aiSorting, setAiSorting] = useState(false);
+  const [testimonialDragIndex, setTestimonialDragIndex] = useState<number | null>(null);
+  const [testimonialDragOverIndex, setTestimonialDragOverIndex] = useState<number | null>(null);
+  
   // Load saved branding on mount
   useEffect(() => {
     const savedBranding = localStorage.getItem('agentBranding');
@@ -391,7 +424,21 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
       setWebsiteUrl(persona.websiteUrl || '');
       setBio(persona.bio || '');
     }
+    // Load testimonials
+    const savedTestimonials = localStorage.getItem('agentTestimonials');
+    if (savedTestimonials) {
+      setTestimonials(JSON.parse(savedTestimonials));
+    }
   }, []);
+
+  // Auto-save testimonials when they change (but not when clearing)
+  useEffect(() => {
+    // Only save if there are testimonials - clearing is handled separately
+    if (testimonials.length > 0) {
+      localStorage.setItem('agentTestimonials', JSON.stringify(testimonials));
+    }
+    // Note: localStorage.removeItem is called explicitly when clearing
+  }, [testimonials]);
 
   // Load suburbs from API
   useEffect(() => {
@@ -689,6 +736,7 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     suburbs: 'Suburb Subscription',
     subscription: 'Billing & Subscription',
     pipeline: 'Pipeline Stages',
+    testimonials: 'Testimonial Database',
     api: 'API Connection',
   };
 
@@ -707,6 +755,10 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
       onClose();
     } else if (panel === 'personal') {
       savePersonalDetails();
+      onClose();
+    } else if (panel === 'testimonials') {
+      localStorage.setItem('agentTestimonials', JSON.stringify(testimonials));
+      alert('Testimonials saved!');
       onClose();
     } else {
       alert('Settings saved!');
@@ -778,56 +830,6 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
                   </label>
                 ))}
               </div>
-            </div>
-
-            {/* Online Profiles */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Online Profiles</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">RealEstate.com.au Profile URL</label>
-                  <input
-                    type="url"
-                    value={reaUrl}
-                    onChange={(e) => setReaUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="https://www.realestate.com.au/agent/john-smith-123456"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Domain.com.au Profile URL</label>
-                  <input
-                    type="url"
-                    value={domainUrl}
-                    onChange={(e) => setDomainUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="https://www.domain.com.au/real-estate-agent/john-smith-123456"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Personal Website (optional)</label>
-                  <input
-                    type="url"
-                    value={websiteUrl}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="https://www.johnsmithrealestate.com.au"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* About You */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">About You</h3>
-              <p className="text-sm text-gray-500 mb-4">A short bio that can be used in communications</p>
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                placeholder="I'm a local real estate agent with 10 years of experience..."
-              />
             </div>
 
             {/* Branding for Appraisal Reports */}
@@ -946,14 +948,32 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
                         <p className="text-xs text-gray-500">{secondaryColor}</p>
                       </div>
                     </div>
-                    {/* Preview */}
+                    {/* Preview Button */}
                     <div className="flex-1 flex justify-end">
-                      <div 
-                        className="px-4 py-2 rounded-lg text-white text-sm font-medium"
+                      <button 
+                        onClick={() => {
+                          // Save current branding to localStorage before preview
+                          const branding = {
+                            headshot: agentPhoto,
+                            logo: agencyLogo,
+                            primaryColor,
+                            secondaryColor,
+                            tagline: agentTagline,
+                            licenseNumber,
+                            reaUrl,
+                            domainUrl,
+                            websiteUrl,
+                            bio
+                          };
+                          localStorage.setItem('agentBranding', JSON.stringify(branding));
+                          // Open preview report in new tab with sample property
+                          window.open('/report/preview/sample-property', '_blank');
+                        }}
+                        className="px-4 py-2 rounded-lg text-white text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity"
                         style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
                       >
                         Preview
-                      </div>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -981,6 +1001,56 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
                       placeholder="e.g. 12345678"
                     />
                   </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 pt-6 mt-6">
+                  <h4 className="font-medium text-gray-900 mb-4">Online Profiles</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">RealEstate.com.au Profile URL</label>
+                      <input
+                        type="url"
+                        value={reaUrl}
+                        onChange={(e) => setReaUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                        placeholder="https://www.realestate.com.au/agent/john-smith-123456"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Domain.com.au Profile URL</label>
+                      <input
+                        type="url"
+                        value={domainUrl}
+                        onChange={(e) => setDomainUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                        placeholder="https://www.domain.com.au/real-estate-agent/john-smith-123456"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Personal Website (optional)</label>
+                      <input
+                        type="url"
+                        value={websiteUrl}
+                        onChange={(e) => setWebsiteUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                        placeholder="https://www.johnsmithrealestate.com.au"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* About You */}
+                <div className="border-t border-gray-200 pt-6 mt-6">
+                  <h4 className="font-medium text-gray-900 mb-2">About You</h4>
+                  <p className="text-sm text-gray-500 mb-3">A short bio that can be used in communications and reports</p>
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                    placeholder="I'm a local real estate agent with 10 years of experience..."
+                  />
                 </div>
               </div>
             </div>
@@ -1478,6 +1548,535 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
             )}
             <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
               <p className="text-sm text-blue-700"><strong>💡 Tip:</strong> You can also edit stages directly in the Pipeline view by clicking on stage names.</p>
+            </div>
+          </div>
+        );
+
+      case 'testimonials':
+        // Parse bulk pasted testimonials from realestate.com.au format
+        const parseTestimonials = () => {
+          if (!bulkPasteText.trim()) {
+            alert('Please paste some testimonials first');
+            return;
+          }
+          
+          setParsingTestimonials(true);
+          
+          const parsedTestimonials: Testimonial[] = [];
+          
+          // RealEstate.com.au format detection:
+          // Pattern: "5.0" or "5" followed by "Verified review", then "Seller/Buyer of...", then "X months/years ago", then review text
+          
+          // Split by rating pattern (5.0 or 5 at start of line)
+          const ratingPattern = /^(\d\.?\d?)\s*$/gm;
+          const text = bulkPasteText;
+          
+          // Find all rating positions
+          const matches: { rating: number; startIndex: number }[] = [];
+          let match;
+          const ratingRegex = /^(\d\.?\d?)\s*$/gm;
+          while ((match = ratingRegex.exec(text)) !== null) {
+            const rating = parseFloat(match[1]);
+            if (rating >= 1 && rating <= 5) {
+              matches.push({ rating, startIndex: match.index });
+            }
+          }
+          
+          // Process each review block
+          for (let i = 0; i < matches.length; i++) {
+            const startIdx = matches[i].startIndex;
+            const endIdx = i < matches.length - 1 ? matches[i + 1].startIndex : text.length;
+            const block = text.substring(startIdx, endIdx).trim();
+            
+            const lines = block.split('\n').map(l => l.trim()).filter(l => l);
+            
+            if (lines.length < 3) continue; // Need at least rating, some metadata, and review text
+            
+            let rating = matches[i].rating;
+            let reviewerType = '';
+            let location = '';
+            let relativeDate = '';
+            let reviewText = '';
+            
+            for (let j = 1; j < lines.length; j++) {
+              const line = lines[j];
+              
+              // Skip "Verified review" line
+              if (/^verified\s*review$/i.test(line)) continue;
+              
+              // Check for "Seller of house in Location, STATE" or "Buyer of apartment in Location, STATE"
+              const sellerBuyerMatch = line.match(/^(Seller|Buyer)\s+of\s+(\w+(?:\s+\w+)?)\s+in\s+(.+)$/i);
+              if (sellerBuyerMatch) {
+                reviewerType = sellerBuyerMatch[1]; // Seller or Buyer
+                const propertyType = sellerBuyerMatch[2]; // house, apartment, villa, etc.
+                location = sellerBuyerMatch[3]; // Sanctuary Cove, QLD
+                continue;
+              }
+              
+              // Check for relative date pattern: "1 month ago", "2 years ago", "1 year 4 months ago"
+              const dateMatch = line.match(/^(\d+\s+(?:year|month|week|day)s?(?:\s+\d+\s+(?:year|month|week|day)s?)?)\s+ago$/i);
+              if (dateMatch) {
+                relativeDate = line;
+                // Convert relative date to approximate actual date
+                const now = new Date();
+                const parts = dateMatch[1].toLowerCase();
+                
+                // Parse years
+                const yearMatch = parts.match(/(\d+)\s*year/);
+                if (yearMatch) {
+                  now.setFullYear(now.getFullYear() - parseInt(yearMatch[1]));
+                }
+                
+                // Parse months
+                const monthMatch = parts.match(/(\d+)\s*month/);
+                if (monthMatch) {
+                  now.setMonth(now.getMonth() - parseInt(monthMatch[1]));
+                }
+                
+                relativeDate = now.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+                continue;
+              }
+              
+              // Skip star emoji lines
+              if (/^[⭐★]+$/.test(line)) continue;
+              
+              // Everything else is review text
+              if (line.length > 0) {
+                reviewText += (reviewText ? ' ' : '') + line;
+              }
+            }
+            
+            // Only add if we have actual review text
+            if (reviewText.length > 10) {
+              parsedTestimonials.push({
+                id: `imported-${Date.now()}-${parsedTestimonials.length}`,
+                reviewerName: reviewerType && location ? `${reviewerType} in ${location}` : 'Verified review',
+                date: relativeDate || 'Unknown date',
+                rating: Math.round(rating),
+                text: reviewText.trim(),
+                propertyAddress: location || undefined,
+                source: 'realestate.com.au',
+                isTopFive: false,
+              });
+            }
+          }
+          
+          // Fallback: If the REA format didn't work, try generic parsing
+          if (parsedTestimonials.length === 0 && bulkPasteText.length > 50) {
+            // Just split by double newlines or long gaps
+            const chunks = bulkPasteText.split(/\n\s*\n/).filter(c => c.trim().length > 30);
+            chunks.forEach((chunk, idx) => {
+              parsedTestimonials.push({
+                id: `imported-${Date.now()}-${idx}`,
+                reviewerName: 'Client Review',
+                date: new Date().toLocaleDateString('en-AU', { month: 'long', year: 'numeric' }),
+                rating: 5,
+                text: chunk.trim().substring(0, 500),
+                source: 'Imported',
+                isTopFive: false,
+              });
+            });
+          }
+          
+          if (parsedTestimonials.length > 0) {
+            setTestimonials(prev => [...prev, ...parsedTestimonials]);
+            setBulkPasteText('');
+            alert(`Successfully imported ${parsedTestimonials.length} testimonial(s)!`);
+          } else {
+            alert('Could not parse any testimonials. Try pasting them in a clearer format.');
+          }
+          
+          setParsingTestimonials(false);
+        };
+        
+        // AI sort testimonials - selects the best ones for top 5
+        const aiSortTestimonials = () => {
+          if (testimonials.length === 0) {
+            alert('No testimonials to sort. Import some first!');
+            return;
+          }
+          
+          setAiSorting(true);
+          
+          // Simulate AI processing (in reality, this would call an AI API)
+          setTimeout(() => {
+            // Score testimonials based on various factors
+            const scored = testimonials.map(t => {
+              let score = 0;
+              
+              // Longer reviews are often more impactful
+              score += Math.min(t.text.length / 50, 5);
+              
+              // 5-star ratings
+              score += t.rating;
+              
+              // Reviews with specific property addresses seem more legitimate
+              if (t.propertyAddress) score += 2;
+              
+              // Reviews with certain positive keywords
+              const positiveWords = ['excellent', 'outstanding', 'professional', 'recommend', 'fantastic', 'amazing', 'best', 'exceptional', 'wonderful', 'great', 'superb', 'dedicated'];
+              positiveWords.forEach(word => {
+                if (t.text.toLowerCase().includes(word)) score += 1;
+              });
+              
+              // Reviews mentioning results/outcomes
+              if (t.text.toLowerCase().includes('sold') || t.text.toLowerCase().includes('price') || t.text.toLowerCase().includes('expectations')) {
+                score += 2;
+              }
+              
+              return { testimonial: t, score };
+            });
+            
+            // Sort by score descending
+            scored.sort((a, b) => b.score - a.score);
+            
+            // Mark top 5 as featured
+            const updated = testimonials.map(t => {
+              const rank = scored.findIndex(s => s.testimonial.id === t.id);
+              return {
+                ...t,
+                isTopFive: rank < 5,
+                order: rank < 5 ? rank : undefined,
+              };
+            });
+            
+            setTestimonials(updated);
+            setAiSorting(false);
+            alert('AI has selected your top 5 testimonials! You can adjust the order by dragging.');
+          }, 1500);
+        };
+        
+        // Toggle top 5 status
+        const toggleTopFive = (id: string) => {
+          const currentTopFive = testimonials.filter(t => t.isTopFive);
+          const targetTestimonial = testimonials.find(t => t.id === id);
+          
+          if (!targetTestimonial) return;
+          
+          if (targetTestimonial.isTopFive) {
+            // Remove from top 5
+            setTestimonials(prev => prev.map(t => 
+              t.id === id ? { ...t, isTopFive: false, order: undefined } : t
+            ));
+          } else {
+            // Add to top 5 (if less than 5)
+            if (currentTopFive.length >= 5) {
+              alert('You can only have 5 featured testimonials. Remove one first.');
+              return;
+            }
+            setTestimonials(prev => prev.map(t => 
+              t.id === id ? { ...t, isTopFive: true, order: currentTopFive.length } : t
+            ));
+          }
+        };
+        
+        // Delete testimonial
+        const deleteTestimonial = (id: string) => {
+          if (confirm('Delete this testimonial?')) {
+            setTestimonials(prev => prev.filter(t => t.id !== id));
+          }
+        };
+        
+        // Handle drag reorder for top 5
+        const handleTestimonialDragStart = (e: React.DragEvent, index: number) => {
+          setTestimonialDragIndex(index);
+          e.dataTransfer.effectAllowed = 'move';
+        };
+        
+        const handleTestimonialDragOver = (e: React.DragEvent, index: number) => {
+          e.preventDefault();
+          setTestimonialDragOverIndex(index);
+        };
+        
+        const handleTestimonialDrop = (e: React.DragEvent, dropIndex: number) => {
+          e.preventDefault();
+          if (testimonialDragIndex === null) return;
+          
+          const topFive = testimonials.filter(t => t.isTopFive).sort((a, b) => (a.order || 0) - (b.order || 0));
+          const draggedItem = topFive[testimonialDragIndex];
+          
+          // Reorder
+          const newTopFive = [...topFive];
+          newTopFive.splice(testimonialDragIndex, 1);
+          newTopFive.splice(dropIndex, 0, draggedItem);
+          
+          // Update orders
+          const newTopFiveWithOrders = newTopFive.map((t, i) => ({ ...t, order: i }));
+          
+          setTestimonials(prev => prev.map(t => {
+            const updated = newTopFiveWithOrders.find(u => u.id === t.id);
+            return updated || t;
+          }));
+          
+          setTestimonialDragIndex(null);
+          setTestimonialDragOverIndex(null);
+        };
+        
+        const topFiveTestimonials = testimonials.filter(t => t.isTopFive).sort((a, b) => (a.order || 0) - (b.order || 0));
+        const otherTestimonials = testimonials.filter(t => !t.isTopFive);
+        
+        return (
+          <div className="space-y-6">
+            {/* Info Banner */}
+            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <svg className="w-6 h-6 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+                <div>
+                  <h3 className="font-semibold text-yellow-800">Showcase Your Best Reviews</h3>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Import testimonials from realestate.com.au or Domain, then select your top 5 to feature in your property reports.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Bulk Import Section */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Bulk Import Testimonials
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Copy and paste testimonials from realestate.com.au or Domain. Include reviewer names, dates, and the review text.
+              </p>
+              <textarea
+                value={bulkPasteText}
+                onChange={(e) => setBulkPasteText(e.target.value)}
+                placeholder="Paste your testimonials here...
+
+Example format:
+★★★★★
+John Smith
+December 2025
+Outstanding service! They helped us sell our home for above asking price...
+
+★★★★★
+Sarah M.
+November 2025
+Professional and dedicated agent..."
+                rows={8}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary font-mono text-sm"
+              />
+              <div className="flex items-center gap-3 mt-4">
+                <button
+                  onClick={parseTestimonials}
+                  disabled={parsingTestimonials || !bulkPasteText.trim()}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+                >
+                  {parsingTestimonials ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Import Testimonials
+                    </>
+                  )}
+                </button>
+                <span className="text-sm text-gray-500">
+                  {testimonials.length} testimonial{testimonials.length !== 1 ? 's' : ''} in database
+                </span>
+                {testimonials.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Delete ALL ' + testimonials.length + ' testimonials including Top 5? This cannot be undone.')) {
+                        setTestimonials([]);
+                        localStorage.removeItem('agentTestimonials');
+                      }
+                    }}
+                    className="text-xs text-gray-400 hover:text-red-500 transition-colors ml-2"
+                  >
+                    (clear all)
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Top 5 Featured Section */}
+            <div className="bg-gradient-to-br from-primary/5 to-red-50 rounded-xl border border-primary/20 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <span className="text-2xl">⭐</span>
+                    Top 5 Featured Testimonials
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    These will appear on your property reports. Drag to reorder.
+                  </p>
+                </div>
+                <button
+                  onClick={aiSortTestimonials}
+                  disabled={aiSorting || testimonials.length === 0}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2 shadow-lg shadow-purple-200"
+                >
+                  {aiSorting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      AI Sorting...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      AI Sort for Me
+                    </>
+                  )}
+                </button>
+              </div>
+              
+              {topFiveTestimonials.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-4xl mb-2">📝</div>
+                  <p>No featured testimonials yet.</p>
+                  <p className="text-sm">Import testimonials and click the star icon to feature them, or use "AI Sort for Me".</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {topFiveTestimonials.map((testimonial, index) => (
+                    <div
+                      key={testimonial.id}
+                      draggable
+                      onDragStart={(e) => handleTestimonialDragStart(e, index)}
+                      onDragOver={(e) => handleTestimonialDragOver(e, index)}
+                      onDrop={(e) => handleTestimonialDrop(e, index)}
+                      className={`bg-white rounded-lg p-4 border-2 cursor-move transition-all ${
+                        testimonialDragOverIndex === index ? 'border-primary border-dashed' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 font-bold">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-gray-900">{testimonial.reviewerName}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">{testimonial.date}</span>
+                            <div className="flex items-center ml-auto">
+                              {[...Array(5)].map((_, i) => (
+                                <svg 
+                                  key={i} 
+                                  className={`w-3 h-3 ${i < testimonial.rating ? 'text-yellow-400' : 'text-gray-300'}`} 
+                                  fill="currentColor" 
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 line-clamp-2">{testimonial.text}</p>
+                          {testimonial.propertyAddress && (
+                            <p className="text-xs text-gray-400 mt-1">📍 {testimonial.propertyAddress}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => toggleTopFive(testimonial.id)}
+                          className="text-yellow-500 hover:text-yellow-600"
+                          title="Remove from featured"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* All Testimonials List */}
+            {otherTestimonials.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900">
+                    All Testimonials ({otherTestimonials.length})
+                  </h3>
+                  <button
+                    onClick={() => {
+                      if (confirm('Delete ALL testimonials? This cannot be undone.')) {
+                        setTestimonials([]);
+                        localStorage.removeItem('agentTestimonials');
+                      }
+                    }}
+                    className="text-[10px] text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    clear all
+                  </button>
+                </div>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {otherTestimonials.map((testimonial) => (
+                    <div
+                      key={testimonial.id}
+                      className="bg-gray-50 rounded-lg p-4 border border-gray-100"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-gray-900">{testimonial.reviewerName}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">{testimonial.date}</span>
+                            <div className="flex items-center ml-2">
+                              {[...Array(5)].map((_, i) => (
+                                <svg 
+                                  key={i} 
+                                  className={`w-3 h-3 ${i < testimonial.rating ? 'text-yellow-400' : 'text-gray-300'}`} 
+                                  fill="currentColor" 
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 line-clamp-2">{testimonial.text}</p>
+                          {testimonial.source && (
+                            <p className="text-xs text-gray-400 mt-1">via {testimonial.source}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleTopFive(testimonial.id)}
+                            className="text-gray-400 hover:text-yellow-500"
+                            title="Add to featured"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => deleteTestimonial(testimonial.id)}
+                            className="text-gray-400 hover:text-red-500"
+                            title="Delete"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Tips */}
+            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+              <p className="text-sm text-blue-700">
+                <strong>💡 Tip:</strong> The more testimonials you import, the better AI can select the most impactful ones for your reports. 
+                Reviews mentioning specific results, prices achieved, or professional service tend to perform best.
+              </p>
             </div>
           </div>
         );

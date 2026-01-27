@@ -3,7 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Download, Share2, Phone, Mail, MapPin, Bed, Bath, Car, TrendingUp, ArrowLeft, Edit3, Check, X, Ruler } from 'lucide-react';
+import { Download, Share2, Phone, Mail, MapPin, Bed, Bath, Car, TrendingUp, ArrowLeft, Edit3, Check, X, Ruler, Globe, Star, Quote, ExternalLink } from 'lucide-react';
+
+interface Testimonial {
+  id: string;
+  reviewerName: string;
+  date: string;
+  rating: number;
+  text: string;
+  propertyAddress?: string;
+  source?: string;
+  isTopFive?: boolean;
+  order?: number;
+}
 
 interface AgentBranding {
   name: string;
@@ -16,6 +28,10 @@ interface AgentBranding {
   license: string;
   primaryColor: string;
   secondaryColor: string;
+  bio: string;
+  reaUrl: string;
+  domainUrl: string;
+  websiteUrl: string;
 }
 
 interface PropertyData {
@@ -67,6 +83,7 @@ export default function AppraisalCardPage() {
   const [error, setError] = useState<string | null>(null);
   const [agentBranding, setAgentBranding] = useState<AgentBranding | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   
   // Editable fields
   const [editableDescription, setEditableDescription] = useState('');
@@ -83,12 +100,23 @@ export default function AppraisalCardPage() {
     // agentBranding has: agentPhoto, agencyLogo, primaryColor, secondaryColor, agentTagline, licenseNumber
     const savedUser = localStorage.getItem('propdeals_user');
     const savedBranding = localStorage.getItem('agentBranding');
+    const savedTestimonials = localStorage.getItem('agentTestimonials');
     
     const user = savedUser ? JSON.parse(savedUser) : {};
     const branding = savedBranding ? JSON.parse(savedBranding) : {};
     
     console.log('Loaded user:', user);
     console.log('Loaded branding:', branding);
+    
+    // Load testimonials - get only top 5, sorted by order
+    if (savedTestimonials) {
+      const allTestimonials: Testimonial[] = JSON.parse(savedTestimonials);
+      const topFive = allTestimonials
+        .filter(t => t.isTopFive)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .slice(0, 5);
+      setTestimonials(topFive);
+    }
     
     // Also try to get phone/email from API profile if available
     const fetchAgentDetails = async () => {
@@ -105,13 +133,17 @@ export default function AppraisalCardPage() {
               name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || profile.name || profile.firstName || 'Your Agent',
               email: profile.email || user.email || '',
               phone: profile.phone || profile.mobile || profile.phoneNumber || profile.contactNumber || user.phone || '',
-              photo: branding.agentPhoto || user.avatar || profile.profilePicture || profile.avatar || '',
-              logo: branding.agencyLogo || '',
+              photo: branding.headshot || branding.agentPhoto || user.avatar || profile.profilePicture || profile.avatar || '',
+              logo: branding.logo || branding.agencyLogo || '',
               agency: user.agency || profile.agency || profile.agencyName || '',
-              tagline: branding.agentTagline || "Let's Sell!",
+              tagline: branding.tagline || branding.agentTagline || "Let's Sell!",
               license: branding.licenseNumber || '',
               primaryColor: branding.primaryColor || '#1e3a5f',
               secondaryColor: branding.secondaryColor || '#c9a962',
+              bio: branding.bio || '',
+              reaUrl: branding.reaUrl || '',
+              domainUrl: branding.domainUrl || '',
+              websiteUrl: branding.websiteUrl || '',
             });
             return;
           }
@@ -125,13 +157,17 @@ export default function AppraisalCardPage() {
         name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Your Name',
         email: user.email || '',
         phone: user.phone || '',
-        photo: branding.agentPhoto || user.avatar || '',
-        logo: branding.agencyLogo || '',
+        photo: branding.headshot || branding.agentPhoto || user.avatar || '',
+        logo: branding.logo || branding.agencyLogo || '',
         agency: user.agency || '',
-        tagline: branding.agentTagline || "Let's Sell!",
+        tagline: branding.tagline || branding.agentTagline || "Let's Sell!",
         license: branding.licenseNumber || '',
         primaryColor: branding.primaryColor || '#1e3a5f',
         secondaryColor: branding.secondaryColor || '#c9a962',
+        bio: branding.bio || '',
+        reaUrl: branding.reaUrl || '',
+        domainUrl: branding.domainUrl || '',
+        websiteUrl: branding.websiteUrl || '',
       });
     };
     
@@ -615,6 +651,197 @@ export default function AppraisalCardPage() {
               </div>
             </div>
           </div>
+
+          {/* About the Agent Section */}
+          {agentBranding && (
+            <div className="px-8 pb-8">
+              <div 
+                className="rounded-xl p-6"
+                style={{ backgroundColor: `${primaryColor}08`, borderLeft: `4px solid ${primaryColor}` }}
+              >
+                <div className="flex items-start gap-6">
+                  {/* Agent Photo */}
+                  <div className="flex-shrink-0">
+                    <div 
+                      className="w-24 h-24 rounded-xl overflow-hidden shadow-lg"
+                      style={{ border: `3px solid ${primaryColor}30` }}
+                    >
+                      {agentBranding.photo ? (
+                        <Image 
+                          src={agentBranding.photo} 
+                          alt={agentBranding.name || 'Agent'} 
+                          width={96} 
+                          height={96} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-2xl font-bold">
+                          {agentBranding.name?.charAt(0) || 'A'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Agent Info */}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">{agentBranding.name || 'Your Name'}</h3>
+                    <p className="text-gray-600 mb-1">{agentBranding.agency || 'Your Agency'}</p>
+                    {agentBranding.license && (
+                      <p className="text-sm text-gray-500 mb-3">License: {agentBranding.license}</p>
+                    )}
+                    
+                    {/* Bio */}
+                    {agentBranding.bio && (
+                      <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                        {agentBranding.bio.length > 300 ? agentBranding.bio.substring(0, 300) + '...' : agentBranding.bio}
+                      </p>
+                    )}
+
+                    {/* Contact & Links */}
+                    <div className="flex flex-wrap items-center gap-4">
+                      {agentBranding.phone && (
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <Phone className="w-4 h-4" style={{ color: primaryColor }} />
+                          <span>{agentBranding.phone}</span>
+                        </div>
+                      )}
+                      {agentBranding.email && (
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <Mail className="w-4 h-4" style={{ color: primaryColor }} />
+                          <span>{agentBranding.email}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Online Profiles */}
+                {(agentBranding.reaUrl || agentBranding.domainUrl || agentBranding.websiteUrl) && (
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Find Me Online</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {agentBranding.reaUrl && (
+                        <a 
+                          href={agentBranding.reaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-md"
+                          style={{ 
+                            backgroundColor: '#e4002b15',
+                            color: '#e4002b'
+                          }}
+                        >
+                          <Globe className="w-4 h-4" />
+                          realestate.com.au
+                          <ExternalLink className="w-3 h-3 opacity-60" />
+                        </a>
+                      )}
+                      {agentBranding.domainUrl && (
+                        <a 
+                          href={agentBranding.domainUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-md"
+                          style={{ 
+                            backgroundColor: '#00a69415',
+                            color: '#00a694'
+                          }}
+                        >
+                          <Globe className="w-4 h-4" />
+                          domain.com.au
+                          <ExternalLink className="w-3 h-3 opacity-60" />
+                        </a>
+                      )}
+                      {agentBranding.websiteUrl && (
+                        <a 
+                          href={agentBranding.websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-md"
+                          style={{ 
+                            backgroundColor: `${primaryColor}15`,
+                            color: primaryColor
+                          }}
+                        >
+                          <Globe className="w-4 h-4" />
+                          My Website
+                          <ExternalLink className="w-3 h-3 opacity-60" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Testimonials Section */}
+          {testimonials.length > 0 && (
+            <div className="px-8 pb-8">
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Client Testimonials</h3>
+                <p className="text-xs text-gray-400">What our clients say about working with us</p>
+              </div>
+              
+              <div className="space-y-4">
+                {testimonials.slice(0, 3).map((testimonial) => (
+                  <div 
+                    key={testimonial.id}
+                    className="relative rounded-xl p-5 bg-gradient-to-br from-gray-50 to-white border border-gray-100 shadow-sm"
+                  >
+                    {/* Quote Icon */}
+                    <div 
+                      className="absolute -top-2 -left-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      <Quote className="w-4 h-4 text-white" />
+                    </div>
+                    
+                    <div className="pl-4">
+                      {/* Stars */}
+                      <div className="flex items-center gap-0.5 mb-2">
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            className="w-4 h-4" 
+                            fill={i < testimonial.rating ? '#fbbf24' : 'none'}
+                            stroke={i < testimonial.rating ? '#fbbf24' : '#d1d5db'}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Text */}
+                      <p className="text-gray-700 text-sm leading-relaxed mb-3 italic">
+                        &quot;{testimonial.text.length > 200 ? testimonial.text.substring(0, 200) + '...' : testimonial.text}&quot;
+                      </p>
+                      
+                      {/* Attribution */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">{testimonial.reviewerName}</p>
+                          <p className="text-xs text-gray-500">
+                            {testimonial.propertyAddress && `${testimonial.propertyAddress} • `}
+                            {testimonial.date}
+                          </p>
+                        </div>
+                        {testimonial.source && (
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                            via {testimonial.source}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {testimonials.length > 3 && (
+                <p className="text-center text-sm text-gray-400 mt-4">
+                  + {testimonials.length - 3} more testimonials
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Footer */}
           <div 
