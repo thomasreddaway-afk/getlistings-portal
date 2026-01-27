@@ -38,12 +38,22 @@ interface TestimonialTemplateStyle {
 
 // Pre-designed testimonial template styles
 const testimonialTemplates: TestimonialTemplateStyle[] = [
+  // Brand-adaptive templates (use user's colors)
+  { id: 'test-brand-light', name: 'Brand Light', isPremium: false, isNew: true, primaryColor: 'BRAND_PRIMARY', secondaryColor: 'BRAND_SECONDARY', textColor: '#ffffff', accentColor: 'BRAND_PRIMARY', style: 'modern' },
+  { id: 'test-brand-dark', name: 'Brand Dark', isPremium: false, isNew: true, primaryColor: 'BRAND_SECONDARY', secondaryColor: 'BRAND_PRIMARY', textColor: '#ffffff', accentColor: 'BRAND_PRIMARY', style: 'bold' },
+  { id: 'test-brand-gradient', name: 'Brand Gradient', isPremium: true, isNew: true, primaryColor: 'BRAND_PRIMARY', secondaryColor: 'BRAND_SECONDARY', textColor: '#ffffff', accentColor: '#ffffff', style: 'gradient' },
+  // Standard templates
   { id: 'test-modern', name: 'Modern Clean', isPremium: false, primaryColor: '#ffffff', secondaryColor: '#f8fafc', textColor: '#1e293b', accentColor: '#E53935', style: 'modern' },
-  { id: 'test-minimal', name: 'Simple Minimal', isPremium: false, isNew: true, primaryColor: '#ffffff', secondaryColor: '#ffffff', textColor: '#374151', accentColor: '#6366f1', style: 'minimal' },
+  { id: 'test-minimal', name: 'Simple Minimal', isPremium: false, primaryColor: '#ffffff', secondaryColor: '#ffffff', textColor: '#374151', accentColor: '#6366f1', style: 'minimal' },
   { id: 'test-bold', name: 'Bold Statement', isPremium: false, primaryColor: '#1a1a1a', secondaryColor: '#262626', textColor: '#ffffff', accentColor: '#fbbf24', style: 'bold' },
   { id: 'test-elegant', name: 'Elegant Gold', isPremium: true, primaryColor: '#1c1917', secondaryColor: '#292524', textColor: '#fafaf9', accentColor: '#D4AF37', style: 'elegant' },
+  // Blue themed templates
+  { id: 'test-ocean', name: 'Ocean Blue', isPremium: false, primaryColor: '#1e3a5f', secondaryColor: '#2563eb', textColor: '#ffffff', accentColor: '#60a5fa', style: 'gradient' },
+  { id: 'test-navy', name: 'Navy Professional', isPremium: false, primaryColor: '#0f172a', secondaryColor: '#1e293b', textColor: '#ffffff', accentColor: '#3b82f6', style: 'bold' },
+  { id: 'test-sky', name: 'Sky Light', isPremium: false, primaryColor: '#f0f9ff', secondaryColor: '#e0f2fe', textColor: '#0c4a6e', accentColor: '#0284c7', style: 'minimal' },
+  // Purple/Indigo templates  
   { id: 'test-gradient', name: 'Gradient Glow', isPremium: true, primaryColor: '#6366f1', secondaryColor: '#8b5cf6', textColor: '#ffffff', accentColor: '#fbbf24', style: 'gradient' },
-  { id: 'test-photo', name: 'Photo Background', isPremium: true, isNew: true, primaryColor: 'rgba(0,0,0,0.7)', secondaryColor: 'rgba(0,0,0,0.5)', textColor: '#ffffff', accentColor: '#E53935', style: 'photo' },
+  { id: 'test-photo', name: 'Photo Background', isPremium: true, primaryColor: 'rgba(0,0,0,0.7)', secondaryColor: 'rgba(0,0,0,0.5)', textColor: '#ffffff', accentColor: '#E53935', style: 'photo' },
 ];
 
 // Template categories with icons
@@ -154,7 +164,8 @@ export default function MarketingPage() {
   const [selectedTestimonial, setSelectedTestimonial] = useState<Testimonial | null>(null);
   const [selectedTestimonialTemplate, setSelectedTestimonialTemplate] = useState<TestimonialTemplateStyle | null>(null);
   const [showTestimonialEditor, setShowTestimonialEditor] = useState(false);
-  const [agentBranding, setAgentBranding] = useState<{name?: string; agency?: string; phone?: string; headshot?: string; agencyLogo?: string; primaryColor?: string} | null>(null);
+  const [agentBranding, setAgentBranding] = useState<{name?: string; agency?: string; phone?: string; headshot?: string; agencyLogo?: string; primaryColor?: string; secondaryColor?: string} | null>(null);
+  const [matchBrandColors, setMatchBrandColors] = useState(false);
   const testimonialCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Load user's properties from pipeline and testimonials
@@ -446,7 +457,14 @@ export default function MarketingPage() {
     canvas.width = 1080;
     canvas.height = 1080;
 
-    const template = selectedTestimonialTemplate;
+    const rawTemplate = selectedTestimonialTemplate;
+    // Resolve brand color placeholders
+    const template = {
+      ...rawTemplate,
+      primaryColor: resolveBrandColor(rawTemplate.primaryColor),
+      secondaryColor: resolveBrandColor(rawTemplate.secondaryColor),
+      accentColor: resolveBrandColor(rawTemplate.accentColor),
+    };
     const testimonial = selectedTestimonial;
 
     // Draw background based on style
@@ -642,12 +660,88 @@ export default function MarketingPage() {
     link.click();
   };
 
-  const filteredTemplates = selectedCategory === 'all' 
-    ? templateStyles 
-    : templateStyles.filter(t => t.category === selectedCategory);
+  // Helper to calculate color similarity (returns 0-1, higher = more similar)
+  const colorSimilarity = (hex1: string, hex2: string): number => {
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 0, g: 0, b: 0 };
+    };
+    
+    const c1 = hexToRgb(hex1);
+    const c2 = hexToRgb(hex2);
+    
+    // Euclidean distance in RGB space, normalized
+    const distance = Math.sqrt(
+      Math.pow(c1.r - c2.r, 2) +
+      Math.pow(c1.g - c2.g, 2) +
+      Math.pow(c1.b - c2.b, 2)
+    );
+    
+    // Max possible distance is sqrt(255^2 * 3) ≈ 441
+    return 1 - (distance / 441);
+  };
+
+  // Check if template matches brand colors (threshold: 70% similarity)
+  const templateMatchesBrand = (template: TemplateStyle): boolean => {
+    if (!agentBranding?.primaryColor) return false;
+    
+    const primaryMatch = colorSimilarity(template.primaryColor, agentBranding.primaryColor) > 0.7;
+    const secondaryColorMatch = agentBranding.secondaryColor 
+      ? colorSimilarity(template.primaryColor, agentBranding.secondaryColor) > 0.7
+      : false;
+    
+    return primaryMatch || secondaryColorMatch;
+  };
+
+  // Check if testimonial template matches brand colors
+  const testimonialTemplateMatchesBrand = (template: TestimonialTemplateStyle): boolean => {
+    // Brand-adaptive templates always match when brand colors are set
+    if (template.primaryColor === 'BRAND_PRIMARY' || template.primaryColor === 'BRAND_SECONDARY') {
+      return !!agentBranding?.primaryColor;
+    }
+    if (!agentBranding?.primaryColor) return false;
+    const primaryMatch = colorSimilarity(template.primaryColor, agentBranding.primaryColor) > 0.7 ||
+                        colorSimilarity(template.accentColor, agentBranding.primaryColor) > 0.7;
+    const secondaryColorMatch = agentBranding.secondaryColor
+      ? colorSimilarity(template.primaryColor, agentBranding.secondaryColor) > 0.7 ||
+        colorSimilarity(template.accentColor, agentBranding.secondaryColor) > 0.7
+      : false;
+    return primaryMatch || secondaryColorMatch;
+  };
+
+  // Helper to resolve brand color placeholders
+  const resolveBrandColor = (color: string): string => {
+    if (color === 'BRAND_PRIMARY') return agentBranding?.primaryColor || '#E53935';
+    if (color === 'BRAND_SECONDARY') return agentBranding?.secondaryColor || agentBranding?.primaryColor || '#1e293b';
+    return color;
+  };
+
+  const filteredTemplates = (() => {
+    let templates = selectedCategory === 'all' 
+      ? templateStyles 
+      : templateStyles.filter(t => t.category === selectedCategory);
+    
+    // If matching brand colors, sort matching templates first
+    if (matchBrandColors && agentBranding?.primaryColor) {
+      templates = [...templates].sort((a, b) => {
+        const aMatches = templateMatchesBrand(a);
+        const bMatches = templateMatchesBrand(b);
+        if (aMatches && !bMatches) return -1;
+        if (!aMatches && bMatches) return 1;
+        return 0;
+      });
+    }
+    
+    return templates;
+  })();
 
   const freeCount = filteredTemplates.filter(t => !t.isPremium).length;
   const premiumCount = filteredTemplates.filter(t => t.isPremium).length;
+  const brandMatchCount = agentBranding?.primaryColor ? filteredTemplates.filter(t => templateMatchesBrand(t)).length : 0;
 
   return (
     <DemoLayout>
@@ -1029,38 +1123,92 @@ export default function MarketingPage() {
             ) : !showTestimonialEditor ? (
               <>
                 <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose a Template Style</h2>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-2xl font-bold text-gray-900">Choose a Template Style</h2>
+                    {agentBranding?.primaryColor && (
+                      <label className="flex items-center space-x-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={matchBrandColors}
+                          onChange={(e) => setMatchBrandColors(e.target.checked)}
+                          className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">Match my brand</span>
+                        <div className="flex items-center space-x-1">
+                          <div className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: agentBranding.primaryColor }}></div>
+                          {agentBranding.secondaryColor && (
+                            <div className="w-4 h-4 rounded-full border-2 border-white shadow" style={{ backgroundColor: agentBranding.secondaryColor }}></div>
+                          )}
+                        </div>
+                      </label>
+                    )}
+                  </div>
                   <p className="text-gray-500">Select a template, then pick a testimonial to create your social graphic</p>
                 </div>
 
+                {/* Brand Match Info */}
+                {matchBrandColors && agentBranding?.primaryColor && (
+                  <div className="mb-6 p-4 bg-gradient-to-r from-primary/5 to-rose-50 rounded-xl border border-primary/20">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-1">
+                        <div className="w-6 h-6 rounded-full border-2 border-white shadow-md" style={{ backgroundColor: agentBranding.primaryColor }}></div>
+                        {agentBranding.secondaryColor && (
+                          <div className="w-6 h-6 rounded-full border-2 border-white shadow-md -ml-2" style={{ backgroundColor: agentBranding.secondaryColor }}></div>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Templates matching your brand colors are highlighted with a <span className="font-semibold text-primary">✓ Brand Match</span> badge
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Testimonial Template Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
-                  {testimonialTemplates.map((template) => (
+                  {(() => {
+                    // Sort templates: brand matches first when filter is enabled
+                    let sortedTestimonialTemplates = [...testimonialTemplates];
+                    if (matchBrandColors && agentBranding?.primaryColor) {
+                      sortedTestimonialTemplates.sort((a, b) => {
+                        const aMatches = testimonialTemplateMatchesBrand(a);
+                        const bMatches = testimonialTemplateMatchesBrand(b);
+                        if (aMatches && !bMatches) return -1;
+                        if (!aMatches && bMatches) return 1;
+                        return 0;
+                      });
+                    }
+                    return sortedTestimonialTemplates;
+                  })().map((template) => {
+                    const isBrandMatch = matchBrandColors && testimonialTemplateMatchesBrand(template);
+                    const primaryColor = resolveBrandColor(template.primaryColor);
+                    const secondaryColor = resolveBrandColor(template.secondaryColor);
+                    const accentColor = resolveBrandColor(template.accentColor);
+                    return (
                     <div
                       key={template.id}
                       onClick={() => handleTestimonialTemplateClick(template)}
                       className="group cursor-pointer"
                     >
-                      <div className="relative aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                      <div className={`relative aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 ${isBrandMatch ? 'ring-4 ring-primary ring-offset-2' : ''}`}>
                         {/* Template Preview */}
                         <div 
                           className="absolute inset-0 flex flex-col items-center justify-center p-6"
                           style={{ 
                             background: template.style === 'gradient' 
-                              ? `linear-gradient(135deg, ${template.primaryColor}, ${template.secondaryColor})`
+                              ? `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`
                               : template.style === 'photo'
                               ? `linear-gradient(135deg, #667eea, #764ba2)`
-                              : template.primaryColor
+                              : primaryColor
                           }}
                         >
                           {/* Photo overlay */}
                           {template.style === 'photo' && (
-                            <div className="absolute inset-0" style={{ backgroundColor: template.primaryColor }}></div>
+                            <div className="absolute inset-0" style={{ backgroundColor: primaryColor }}></div>
                           )}
 
                           {/* Elegant border */}
                           {template.style === 'elegant' && (
-                            <div className="absolute inset-3 border-2 rounded-lg" style={{ borderColor: template.accentColor }}></div>
+                            <div className="absolute inset-3 border-2 rounded-lg" style={{ borderColor: accentColor }}></div>
                           )}
 
                           {/* Bold accent corner */}
@@ -1068,7 +1216,7 @@ export default function MarketingPage() {
                             <div 
                               className="absolute top-0 left-0 w-12 h-12"
                               style={{ 
-                                backgroundColor: template.accentColor,
+                                backgroundColor: accentColor,
                                 clipPath: 'polygon(0 0, 100% 0, 0 100%)'
                               }}
                             ></div>
@@ -1076,16 +1224,16 @@ export default function MarketingPage() {
 
                           {/* Modern/Minimal accent bar */}
                           {(template.style === 'modern' || template.style === 'minimal') && (
-                            <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: template.accentColor }}></div>
+                            <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accentColor }}></div>
                           )}
 
                           {/* Quote icon */}
-                          <Quote className="w-8 h-8 mb-2" style={{ color: template.accentColor, opacity: 0.5 }} />
+                          <Quote className="w-8 h-8 mb-2" style={{ color: accentColor, opacity: 0.5 }} />
 
                           {/* Stars preview */}
                           <div className="flex space-x-0.5 mb-2">
                             {[1,2,3,4,5].map(i => (
-                              <Star key={i} className="w-3 h-3" style={{ color: template.accentColor, fill: template.accentColor }} />
+                              <Star key={i} className="w-3 h-3" style={{ color: accentColor, fill: accentColor }} />
                             ))}
                           </div>
 
@@ -1098,8 +1246,14 @@ export default function MarketingPage() {
                           </div>
                         </div>
 
-                        {/* Premium/New Badges */}
-                        <div className="absolute top-3 left-3 flex space-x-2 z-20">
+                        {/* Premium/New/Brand Match Badges */}
+                        <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-20">
+                          {isBrandMatch && (
+                            <span className="px-2 py-1 bg-primary text-white text-xs font-bold rounded-md shadow flex items-center space-x-1">
+                              <Check className="w-3 h-3" />
+                              <span>Brand Match</span>
+                            </span>
+                          )}
                           {template.isNew && (
                             <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-md shadow">NEW</span>
                           )}
@@ -1135,7 +1289,8 @@ export default function MarketingPage() {
                         <p className="text-sm text-gray-500">Testimonial Template</p>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : (
@@ -1155,14 +1310,19 @@ export default function MarketingPage() {
                     <div className="flex-1 bg-gray-100 p-8 flex items-center justify-center min-h-[400px]">
                       {generatedImage ? (
                         <img src={generatedImage} alt="Generated" className="max-w-full max-h-[500px] rounded-xl shadow-2xl" />
-                      ) : (
+                      ) : (() => {
+                        // Resolve brand colors for preview
+                        const previewPrimary = selectedTestimonialTemplate ? resolveBrandColor(selectedTestimonialTemplate.primaryColor) : '#f3f4f6';
+                        const previewSecondary = selectedTestimonialTemplate ? resolveBrandColor(selectedTestimonialTemplate.secondaryColor) : '#f3f4f6';
+                        const previewAccent = selectedTestimonialTemplate ? resolveBrandColor(selectedTestimonialTemplate.accentColor) : '#E53935';
+                        return (
                         <div className="w-full max-w-md aspect-square rounded-xl flex items-center justify-center" style={{
                           background: selectedTestimonialTemplate?.style === 'gradient'
-                            ? `linear-gradient(135deg, ${selectedTestimonialTemplate.primaryColor}, ${selectedTestimonialTemplate.secondaryColor})`
-                            : selectedTestimonialTemplate?.primaryColor || '#f3f4f6'
+                            ? `linear-gradient(135deg, ${previewPrimary}, ${previewSecondary})`
+                            : previewPrimary
                         }}>
                           <div className="text-center p-8">
-                            <Quote className="w-12 h-12 mx-auto mb-4" style={{ color: selectedTestimonialTemplate?.accentColor, opacity: 0.5 }} />
+                            <Quote className="w-12 h-12 mx-auto mb-4" style={{ color: previewAccent, opacity: 0.5 }} />
                             <p className="text-sm mb-4" style={{ color: selectedTestimonialTemplate?.textColor }}>
                               {selectedTestimonial?.text?.slice(0, 150) || 'Select a testimonial...'}
                               {(selectedTestimonial?.text?.length || 0) > 150 && '...'}
@@ -1172,8 +1332,8 @@ export default function MarketingPage() {
                                 <div className="flex justify-center space-x-1 mb-2">
                                   {[1,2,3,4,5].map(i => (
                                     <Star key={i} className="w-4 h-4" style={{ 
-                                      color: selectedTestimonialTemplate?.accentColor,
-                                      fill: i <= (selectedTestimonial?.rating || 5) ? selectedTestimonialTemplate?.accentColor : 'transparent'
+                                      color: previewAccent,
+                                      fill: i <= (selectedTestimonial?.rating || 5) ? previewAccent : 'transparent'
                                     }} />
                                   ))}
                                 </div>
@@ -1186,7 +1346,8 @@ export default function MarketingPage() {
                             )}
                           </div>
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
 
                     {/* Controls */}

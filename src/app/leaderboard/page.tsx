@@ -65,7 +65,6 @@ export default function LeaderboardPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(cachedData?.total || 0);
   const [numberOfPages, setNumberOfPages] = useState(cachedData?.numberOfPages || 1);
-  const [period, setPeriod] = useState('this-month');
   const perPage = 20;
 
   const loadLeaderboard = async (pageNum = 1, isBackgroundRefresh = false) => {
@@ -157,7 +156,7 @@ export default function LeaderboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Agent Leaderboard</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Top performing agents this month</p>
+              <p className="text-sm text-gray-500 mt-0.5">Top performing agents</p>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-green-500 animate-pulse">● LIVE</span>
@@ -167,17 +166,6 @@ export default function LeaderboardPage() {
                   Updating...
                 </span>
               )}
-              <select 
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-              >
-                <option value="this-month">This Month</option>
-                <option value="last-month">Last Month</option>
-                <option value="this-quarter">This Quarter</option>
-                <option value="this-year">This Year</option>
-                <option value="all-time">All Time</option>
-              </select>
             </div>
           </div>
         </div>
@@ -304,7 +292,12 @@ export default function LeaderboardPage() {
                               </div>
                             )}
                           </div>
-                          <span className="text-sm font-medium text-gray-900">{getName(entry)}</span>
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">{getName(entry)}</span>
+                            {entry.agencyName && (
+                              <p className="text-xs text-gray-500">{entry.agencyName}</p>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="col-span-2 text-right">

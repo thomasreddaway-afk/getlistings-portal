@@ -52,6 +52,7 @@ type SettingsPanel =
   | 'subscription'
   | 'pipeline'
   | 'testimonials'
+  | 'territory'
   | 'api';
 
 interface Testimonial {
@@ -151,6 +152,18 @@ export default function SettingsPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          ),
+        },
+        { 
+          id: 'territory', 
+          label: 'Territory expansion', 
+          description: 'Unlock leads in nearby suburbs to grow your coverage area.',
+          iconBg: 'bg-gradient-to-br from-amber-100 to-orange-100',
+          iconColor: 'text-amber-600',
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
           ),
         },
@@ -402,6 +415,7 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
   const [aiSorting, setAiSorting] = useState(false);
   const [testimonialDragIndex, setTestimonialDragIndex] = useState<number | null>(null);
   const [testimonialDragOverIndex, setTestimonialDragOverIndex] = useState<number | null>(null);
+  const [extractingColors, setExtractingColors] = useState(false);
   
   // Load saved branding on mount
   useEffect(() => {
@@ -737,6 +751,7 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     subscription: 'Billing & Subscription',
     pipeline: 'Pipeline Stages',
     testimonials: 'Testimonial Database',
+    territory: 'Territory Expansion',
     api: 'API Connection',
   };
 
@@ -780,6 +795,106 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // Extract dominant colors from an image
+  const extractColorsFromImage = (imageDataUrl: string) => {
+    setExtractingColors(true);
+    
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        setExtractingColors(false);
+        return;
+      }
+      
+      // Scale down for faster processing
+      const scale = Math.min(1, 100 / Math.max(img.width, img.height));
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const pixels = imageData.data;
+      
+      // Group colors into buckets
+      const colorMap: Record<string, { count: number; r: number; g: number; b: number }> = {};
+      
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const a = pixels[i + 3];
+        
+        // Skip transparent/near-transparent pixels
+        if (a < 128) continue;
+        
+        // Skip near-white and near-black pixels
+        const brightness = (r + g + b) / 3;
+        if (brightness > 240 || brightness < 15) continue;
+        
+        // Quantize to reduce noise (group similar colors)
+        const qR = Math.round(r / 32) * 32;
+        const qG = Math.round(g / 32) * 32;
+        const qB = Math.round(b / 32) * 32;
+        const key = `${qR},${qG},${qB}`;
+        
+        if (!colorMap[key]) {
+          colorMap[key] = { count: 0, r: 0, g: 0, b: 0 };
+        }
+        colorMap[key].count++;
+        colorMap[key].r += r;
+        colorMap[key].g += g;
+        colorMap[key].b += b;
+      }
+      
+      // Sort by count and get top colors
+      const sortedColors = Object.values(colorMap)
+        .filter(c => c.count > 5)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+      
+      if (sortedColors.length >= 2) {
+        // Average out the colors in each bucket
+        const primary = sortedColors[0];
+        const secondary = sortedColors[1];
+        
+        const pR = Math.round(primary.r / primary.count);
+        const pG = Math.round(primary.g / primary.count);
+        const pB = Math.round(primary.b / primary.count);
+        
+        const sR = Math.round(secondary.r / secondary.count);
+        const sG = Math.round(secondary.g / secondary.count);
+        const sB = Math.round(secondary.b / secondary.count);
+        
+        // Convert to hex
+        const toHex = (r: number, g: number, b: number) => 
+          '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        
+        setPrimaryColor(toHex(pR, pG, pB));
+        setSecondaryColor(toHex(sR, sG, sB));
+      } else if (sortedColors.length === 1) {
+        const primary = sortedColors[0];
+        const pR = Math.round(primary.r / primary.count);
+        const pG = Math.round(primary.g / primary.count);
+        const pB = Math.round(primary.b / primary.count);
+        const toHex = (r: number, g: number, b: number) => 
+          '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        setPrimaryColor(toHex(pR, pG, pB));
+      }
+      
+      setExtractingColors(false);
+    };
+    
+    img.onerror = () => {
+      setExtractingColors(false);
+      alert('Could not process the image. Please try a different format.');
+    };
+    
+    img.src = imageDataUrl;
   };
 
   const renderPanelContent = () => {
@@ -897,22 +1012,48 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
                           </svg>
                         )}
                       </div>
-                      <div>
-                        <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-                          Upload Logo
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => handleImageUpload(e, setAgencyLogo)}
-                          />
-                        </label>
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Upload Logo
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleImageUpload(e, setAgencyLogo)}
+                            />
+                          </label>
+                          {agencyLogo && (
+                            <button 
+                              onClick={() => setAgencyLogo('')}
+                              className="text-sm text-red-600 hover:text-red-700"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                         {agencyLogo && (
-                          <button 
-                            onClick={() => setAgencyLogo('')}
-                            className="ml-2 text-sm text-red-600 hover:text-red-700"
+                          <button
+                            onClick={() => extractColorsFromImage(agencyLogo)}
+                            disabled={extractingColors}
+                            className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-violet-600 hover:to-purple-700 disabled:opacity-50 transition-all"
                           >
-                            Remove
+                            {extractingColors ? (
+                              <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Extracting...</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                </svg>
+                                <span>Extract Colors</span>
+                              </>
+                            )}
                           </button>
                         )}
                       </div>
@@ -2077,6 +2218,245 @@ Professional and dedicated agent..."
                 <strong>💡 Tip:</strong> The more testimonials you import, the better AI can select the most impactful ones for your reports. 
                 Reviews mentioning specific results, prices achieved, or professional service tend to perform best.
               </p>
+            </div>
+          </div>
+        );
+
+      case 'territory':
+        return (
+          <div className="space-y-6">
+            {/* Header Info */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-amber-900">Expand Your Territory</h4>
+                  <p className="text-sm text-amber-700 mt-1">Get access to high-potential leads in suburbs adjacent to your current coverage area.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Current Coverage */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">Your Current Coverage</h3>
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full flex items-center space-x-1">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span>{subscribedSuburbs.length} Active</span>
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {subscribedSuburbs.length > 0 ? subscribedSuburbs.map((suburb) => (
+                  <span key={suburb} className="inline-flex items-center px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm border border-green-200">
+                    <svg className="w-4 h-4 mr-1.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {suburb}
+                  </span>
+                )) : (
+                  <span className="text-gray-500">Loading your suburbs...</span>
+                )}
+              </div>
+            </div>
+
+            {/* Nearby Suburbs - Locked */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">Nearby Suburbs Available</h3>
+                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full flex items-center space-x-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span>Locked</span>
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">These suburbs are adjacent to your current coverage and have seller leads waiting.</p>
+              
+              {/* Blurred/locked nearby suburbs */}
+              <div className="grid grid-cols-2 gap-3">
+                {['Paddington', 'Red Hill', 'Kelvin Grove', 'Newmarket', 'Bardon', 'Milton'].map((suburb) => (
+                  <div key={suburb} className="relative p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] rounded-xl flex items-center justify-center z-10">
+                      <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900">{suburb}</p>
+                        <p className="text-xs text-gray-500">Near your area</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">? leads</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Upgrade CTA */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold">Expand Your Territory</h3>
+                  <p className="text-amber-100 mt-1">Get access to high-potential leads in suburbs near your current coverage</p>
+                  <div className="flex items-center space-x-4 mt-3">
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-sm">Instant access</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-sm">Full contact details</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-sm">AI insights included</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-amber-200 text-sm">Starting from</p>
+                  <p className="text-3xl font-bold">$49<span className="text-lg font-normal">/suburb/mo</span></p>
+                  <button className="mt-2 px-6 py-2 bg-white text-amber-600 rounded-lg text-sm font-semibold hover:bg-amber-50 transition-colors">
+                    View Packages
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bundle Packages */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Single Suburb */}
+              <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-bold text-gray-900">Single Suburb</h4>
+                  <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">Basic</span>
+                </div>
+                <div className="mb-4">
+                  <span className="text-3xl font-bold text-gray-900">$49</span>
+                  <span className="text-gray-500">/mo</span>
+                </div>
+                <ul className="space-y-2 text-sm text-gray-600 mb-4">
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>1 additional suburb</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Full lead access</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>AI insights</span>
+                  </li>
+                </ul>
+                <button className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                  Select Suburb
+                </button>
+              </div>
+
+              {/* 3 Suburb Bundle */}
+              <div className="bg-white rounded-xl border-2 border-blue-200 p-5 hover:shadow-lg transition-shadow relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">Popular</span>
+                </div>
+                <div className="flex items-center justify-between mb-3 mt-2">
+                  <h4 className="font-bold text-gray-900">3 Suburb Bundle</h4>
+                </div>
+                <div className="mb-4">
+                  <span className="text-3xl font-bold text-gray-900">$79</span>
+                  <span className="text-gray-500">/mo</span>
+                  <span className="ml-2 text-sm text-green-600 font-medium">Save $68</span>
+                </div>
+                <ul className="space-y-2 text-sm text-gray-600 mb-4">
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>3 additional suburbs</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Full lead access</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>AI insights + priority support</span>
+                  </li>
+                </ul>
+                <button className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                  Choose 3 Suburbs
+                </button>
+              </div>
+
+              {/* 6 Suburb Bundle */}
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border-2 border-amber-300 p-5 hover:shadow-lg transition-shadow relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">BEST VALUE</span>
+                </div>
+                <div className="flex items-center justify-between mb-3 mt-2">
+                  <h4 className="font-bold text-gray-900">6 Suburb Bundle</h4>
+                  <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded">Pro</span>
+                </div>
+                <div className="mb-4">
+                  <span className="text-3xl font-bold text-gray-900">$99</span>
+                  <span className="text-gray-500">/mo</span>
+                  <span className="ml-2 text-sm text-green-600 font-medium">Save $195</span>
+                </div>
+                <ul className="space-y-2 text-sm text-gray-600 mb-4">
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span><strong>All 6 nearby suburbs</strong></span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Unlimited lead access</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>AI insights + priority support</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Exclusive territory protection</span>
+                  </li>
+                </ul>
+                <button className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-sm font-bold hover:from-amber-600 hover:to-orange-600 transition-colors shadow-lg shadow-amber-500/25">
+                  Get All 6 Suburbs
+                </button>
+              </div>
             </div>
           </div>
         );

@@ -144,12 +144,6 @@ export default function ExclusivePage() {
                 >
                   Book Onboarding Call
                 </a>
-                <a
-                  href="mailto:tom@getlistings.com.au"
-                  className="px-6 py-3 bg-white/10 backdrop-blur text-white font-medium rounded-xl hover:bg-white/20 transition-colors border border-white/30"
-                >
-                  Contact Sales
-                </a>
               </div>
             </div>
           </div>
@@ -291,12 +285,6 @@ export default function ExclusivePage() {
                   className="px-8 py-4 bg-primary text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-primary/25"
                 >
                   Book Your Onboarding Call
-                </a>
-                <a
-                  href="mailto:tom@getlistings.com.au"
-                  className="px-8 py-4 bg-white/10 backdrop-blur text-white font-medium rounded-xl hover:bg-white/20 transition-colors border border-white/30"
-                >
-                  Contact Sales Team
                 </a>
               </div>
               <p className="text-gray-400 text-sm mt-6">

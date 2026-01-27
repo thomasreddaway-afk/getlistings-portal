@@ -129,9 +129,6 @@ export function DemoSidebar() {
           <NavItem href="/expired" icon={ClockIcon} active={isActive('/expired')}>
             Expiring Listings
           </NavItem>
-          <NavItem href="/nearby" icon={MapPinIcon} active={isActive('/nearby')}>
-            Territory Expansion
-          </NavItem>
           <NavItem href="/pipeline" icon={KanbanIcon} active={isActive('/pipeline')}>
             Lead Pipeline
           </NavItem>
