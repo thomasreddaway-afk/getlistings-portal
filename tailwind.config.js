@@ -9,6 +9,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Primary brand color (red) - matching demo.html exactly
+        primary: {
+          DEFAULT: '#c8102e',
+          dark: '#a50d25',
+          light: '#d4334d',
+        },
         // Get Listings brand colors
         brand: {
           50: '#f0f9ff',
@@ -47,8 +53,8 @@ module.exports = {
         info: '#3b82f6',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+        sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.75rem' }],

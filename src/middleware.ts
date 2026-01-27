@@ -6,6 +6,7 @@ const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || process.env.NO
 
 // Paths that don't require authentication
 const publicPaths = [
+  '/',
   '/login',
   '/api/leads/facebook', // Facebook webhook needs to be public
 ];

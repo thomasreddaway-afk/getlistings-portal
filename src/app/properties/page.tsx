@@ -2,273 +2,196 @@
 
 import { DemoLayout } from '@/components/layout';
 import { useState } from 'react';
-import { 
-  Home, 
-  MapPin, 
-  Search,
-  Filter,
-  DollarSign,
-  Bed,
-  Bath,
-  Car,
-  Calendar,
-  ExternalLink
-} from 'lucide-react';
+import { Check, Clock, FileText, Phone, MessageSquare, Mail, Image, BarChart3, Users } from 'lucide-react';
 
 interface Property {
   id: number;
   address: string;
   suburb: string;
-  propertyType: string;
-  price: string;
-  bedrooms: number;
-  bathrooms: number;
-  parking: number;
-  landSize: string;
-  listedDate: string;
-  daysOnMarket: number;
-  image: string;
-  agent: string;
+  postcode: string;
+  score: number;
+  beds: number;
+  baths: number;
 }
 
 const properties: Property[] = [
-  {
-    id: 1,
-    address: '42 Ocean View Parade',
-    suburb: 'Mosman',
-    propertyType: 'House',
-    price: '$3,200,000',
-    bedrooms: 4,
-    bathrooms: 3,
-    parking: 2,
-    landSize: '650 sqm',
-    listedDate: '2024-01-05',
-    daysOnMarket: 12,
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop',
-    agent: 'Sarah Mitchell',
-  },
-  {
-    id: 2,
-    address: '18/50 Raglan Street',
-    suburb: 'Mosman',
-    propertyType: 'Apartment',
-    price: '$1,850,000',
-    bedrooms: 3,
-    bathrooms: 2,
-    parking: 1,
-    landSize: '120 sqm',
-    listedDate: '2024-01-08',
-    daysOnMarket: 9,
-    image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop',
-    agent: 'James Wilson',
-  },
-  {
-    id: 3,
-    address: '7 Burrawong Avenue',
-    suburb: 'Cremorne',
-    propertyType: 'House',
-    price: '$2,550,000',
-    bedrooms: 3,
-    bathrooms: 2,
-    parking: 2,
-    landSize: '450 sqm',
-    listedDate: '2024-01-10',
-    daysOnMarket: 7,
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300&fit=crop',
-    agent: 'Emma Thompson',
-  },
-  {
-    id: 4,
-    address: '23/12 The Corso',
-    suburb: 'Manly',
-    propertyType: 'Apartment',
-    price: '$1,400,000',
-    bedrooms: 2,
-    bathrooms: 1,
-    parking: 1,
-    landSize: '85 sqm',
-    listedDate: '2024-01-12',
-    daysOnMarket: 5,
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400&h=300&fit=crop',
-    agent: 'Michael Chen',
-  },
-  {
-    id: 5,
-    address: '88 Military Road',
-    suburb: 'Neutral Bay',
-    propertyType: 'Townhouse',
-    price: '$2,100,000',
-    bedrooms: 3,
-    bathrooms: 2,
-    parking: 2,
-    landSize: '180 sqm',
-    listedDate: '2024-01-15',
-    daysOnMarket: 2,
-    image: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=400&h=300&fit=crop',
-    agent: 'Rebecca Jones',
-  },
-  {
-    id: 6,
-    address: '5/22 Wycombe Road',
-    suburb: 'Neutral Bay',
-    propertyType: 'Apartment',
-    price: '$950,000',
-    bedrooms: 2,
-    bathrooms: 1,
-    parking: 1,
-    landSize: '75 sqm',
-    listedDate: '2024-01-14',
-    daysOnMarket: 3,
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop',
-    agent: 'David Park',
-  },
+  { id: 1, address: '42 Ocean View Drive', suburb: 'Bondi', postcode: '2026', score: 80, beds: 4, baths: 3 },
+  { id: 2, address: '15 Arinya Road', suburb: 'Ashgrove', postcode: '4060', score: 71, beds: 5, baths: 3 },
+  { id: 3, address: '8 Hillside Crescent', suburb: 'Mosman', postcode: '2088', score: 60, beds: 3, baths: 2 }
 ];
 
+const signals = [
+  { text: 'Neighbour selling property', time: '1 year ago', type: 'green' },
+  { text: 'Requested valuation', time: '1 year ago', type: 'green' },
+  { text: 'Last sold', time: '4 years ago', type: 'blue' }
+];
+
+const tools = [
+  { icon: FileText, title: 'AI Proposal', desc: 'Generate listing presentation', color: 'primary' },
+  { icon: Phone, title: 'Script Call', desc: 'AI-generated call script', color: 'blue' },
+  { icon: MessageSquare, title: 'SMS Templates', desc: 'Quick message templates', color: 'green' },
+  { icon: Mail, title: 'Email Campaign', desc: 'Personalized email drips', color: 'purple' },
+  { icon: Image, title: 'Content Creation', desc: 'Create social assets', color: 'amber' },
+  { icon: BarChart3, title: 'Market Report', desc: 'Generate suburb insights', color: 'red' }
+];
+
+function getScoreColor(score: number) {
+  if (score >= 75) return { bg: 'bg-green-100', text: 'text-green-700' };
+  if (score >= 65) return { bg: 'bg-yellow-100', text: 'text-yellow-700' };
+  return { bg: 'bg-orange-100', text: 'text-orange-700' };
+}
+
 export default function PropertiesPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [suburbFilter, setSuburbFilter] = useState<string>('all');
-
-  const suburbs = ['all', ...Array.from(new Set(properties.map(p => p.suburb)))];
-  const types = ['all', 'House', 'Apartment', 'Townhouse'];
-
-  const filteredProperties = properties.filter(property => {
-    const matchesSearch = property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         property.suburb.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === 'all' || property.propertyType === typeFilter;
-    const matchesSuburb = suburbFilter === 'all' || property.suburb === suburbFilter;
-    return matchesSearch && matchesType && matchesSuburb;
-  });
+  const [selectedId, setSelectedId] = useState(1);
+  const selected = properties.find(p => p.id === selectedId) || properties[0];
+  const scoreColor = getScoreColor(selected.score);
 
   return (
     <DemoLayout currentPage="properties">
-      <div className="flex-1 overflow-auto bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Properties</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Track listings in your area</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search properties..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-64"
-                />
+      <div className="flex-1 overflow-hidden flex">
+        {/* Property List Sidebar */}
+        <div className="w-96 border-r border-gray-200 flex flex-col bg-white">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="font-semibold text-gray-900">Properties</h2>
+            <p className="text-sm text-gray-500">847 properties tracked</p>
+          </div>
+          <div className="flex-1 overflow-auto p-4 space-y-3">
+            {properties.map((prop) => {
+              const colors = getScoreColor(prop.score);
+              return (
+                <div
+                  key={prop.id}
+                  onClick={() => setSelectedId(prop.id)}
+                  className={`bg-white rounded-xl p-4 cursor-pointer transition-all ${
+                    selectedId === prop.id ? 'border-2 border-primary' : 'border border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`px-2 py-0.5 ${colors.bg} ${colors.text} text-xs font-medium rounded-full`}>{prop.score}% Score</span>
+                  </div>
+                  <h3 className="font-medium text-gray-900">{prop.address}</h3>
+                  <p className="text-sm text-gray-500">{prop.suburb} NSW {prop.postcode}</p>
+                  <div className="flex items-center space-x-3 text-sm text-gray-500 mt-2">
+                    <span>🛏 {prop.beds}</span>
+                    <span>🚿 {prop.baths}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Property Detail View */}
+        <div className="flex-1 overflow-auto bg-gray-50">
+          <div className="p-6">
+            {/* Header with Instant Appraisal */}
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">{selected.address}, {selected.suburb}</h1>
+              <div className="bg-gradient-to-br from-primary to-red-700 rounded-xl p-4 text-white w-80">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Instant Appraisal</h3>
+                    <p className="text-white/80 text-xs">Impress homeowners instantly</p>
+                  </div>
+                </div>
+                <p className="text-white/90 text-xs mb-3">Generate a beautiful, professional property appraisal report in seconds.</p>
+                <button className="w-full py-2 bg-white text-primary font-bold text-sm rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2">
+                  <span>Generate Appraisal Report</span>
+                </button>
               </div>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-              >
-                {types.map(type => (
-                  <option key={type} value={type}>
-                    {type === 'all' ? 'All Types' : type}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={suburbFilter}
-                onChange={(e) => setSuburbFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-              >
-                {suburbs.map(suburb => (
-                  <option key={suburb} value={suburb}>
-                    {suburb === 'all' ? 'All Suburbs' : suburb}
-                  </option>
-                ))}
-              </select>
             </div>
-          </div>
-        </div>
 
-        {/* Stats */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center space-x-8 text-sm">
-            <div className="flex items-center space-x-2">
-              <Home className="w-4 h-4 text-blue-500" />
-              <span className="text-gray-600"><span className="font-semibold text-gray-900">{properties.length}</span> Properties</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <DollarSign className="w-4 h-4 text-green-500" />
-              <span className="text-gray-600">Avg Price: <span className="font-semibold text-gray-900">$2.0M</span></span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">Avg DOM: <span className="font-semibold text-gray-900">6 days</span></span>
-            </div>
-          </div>
-        </div>
-
-        {/* Properties Grid */}
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProperties.map(property => (
-              <div
-                key={property.id}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
-              >
+            {/* Seller Score Gauge */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Seller Score</h2>
+              <div className="flex items-center justify-center">
                 <div className="relative">
-                  <img
-                    src={property.image}
-                    alt={property.address}
-                    className="w-full h-48 object-cover"
-                  />
-                  <span className="absolute top-3 left-3 px-2 py-1 bg-white/90 backdrop-blur text-xs font-medium rounded-lg">
-                    {property.propertyType}
-                  </span>
-                  <span className="absolute top-3 right-3 px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-lg">
-                    {property.daysOnMarket} days
-                  </span>
-                </div>
-                <div className="p-4">
-                  <p className="text-xl font-bold text-gray-900 mb-2">{property.price}</p>
-                  <h3 className="font-medium text-gray-900 mb-1">{property.address}</h3>
-                  <p className="text-sm text-gray-500 flex items-center mb-3">
-                    <MapPin className="w-3.5 h-3.5 mr-1" />
-                    {property.suburb}
-                  </p>
-                  
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                    <span className="flex items-center">
-                      <Bed className="w-4 h-4 mr-1 text-gray-400" />
-                      {property.bedrooms}
-                    </span>
-                    <span className="flex items-center">
-                      <Bath className="w-4 h-4 mr-1 text-gray-400" />
-                      {property.bathrooms}
-                    </span>
-                    <span className="flex items-center">
-                      <Car className="w-4 h-4 mr-1 text-gray-400" />
-                      {property.parking}
-                    </span>
-                    <span className="text-gray-400">•</span>
-                    <span>{property.landSize}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">Agent: {property.agent}</span>
-                    <button className="flex items-center text-sm text-red-600 font-medium hover:text-red-700">
-                      View Details
-                      <ExternalLink className="w-3.5 h-3.5 ml-1" />
-                    </button>
+                  <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="10" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#scoreGradient)" strokeWidth="10" strokeLinecap="round" strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - selected.score / 100)} />
+                    <defs>
+                      <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#22c55e" />
+                        <stop offset="50%" stopColor="#eab308" />
+                        <stop offset="100%" stopColor="#c8102e" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-4xl font-bold text-gray-900">{selected.score}%</span>
+                    <span className="text-sm text-gray-500">Likely to Sell</span>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {filteredProperties.length === 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <Home className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No properties match your filters</p>
+              <div className="flex justify-center space-x-8 mt-4 text-sm">
+                <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-green-500 rounded-full"></div><span className="text-gray-600">Low</span></div>
+                <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-yellow-500 rounded-full"></div><span className="text-gray-600">Medium</span></div>
+                <div className="flex items-center space-x-2"><div className="w-3 h-3 bg-red-500 rounded-full"></div><span className="text-gray-600">High</span></div>
+              </div>
             </div>
-          )}
+
+            {/* Selling Signals */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Selling Signals</h2>
+              <div className="space-y-3">
+                {signals.map((sig, i) => (
+                  <div key={i} className={`flex items-center justify-between p-3 ${sig.type === 'green' ? 'bg-green-50' : 'bg-blue-50'} rounded-lg`}>
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 ${sig.type === 'green' ? 'bg-green-100' : 'bg-blue-100'} rounded-full flex items-center justify-center`}>
+                        {sig.type === 'green' ? <Check className="w-4 h-4 text-green-600" /> : <Clock className="w-4 h-4 text-blue-600" />}
+                      </div>
+                      <span className="text-gray-900">{sig.text}</span>
+                    </div>
+                    <span className="text-sm text-gray-500">{sig.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Win The Listing Tools */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Win The Listing</h2>
+              <p className="text-sm text-gray-500 mb-4">AI-powered tools to help you convert this lead</p>
+              <div className="grid grid-cols-2 gap-4">
+                {tools.map((tool) => (
+                  <button key={tool.title} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors text-left">
+                    <div className={`w-12 h-12 bg-${tool.color === 'primary' ? 'primary/10' : `${tool.color}-100`} rounded-xl flex items-center justify-center`}>
+                      <tool.icon className={`w-6 h-6 text-${tool.color === 'primary' ? 'primary' : `${tool.color}-600`}`} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{tool.title}</p>
+                      <p className="text-xs text-gray-500">{tool.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Competitor Watch */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-purple-600" />
+                Competitor Watch
+              </h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-600">Agents subscribed</span>
+                  <span className="font-semibold text-gray-900">8 agents</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                  <span className="text-gray-600">Last agent contact</span>
+                  <span className="font-semibold text-yellow-700">3 days ago</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <span className="text-gray-600">Your advantage</span>
+                  <span className="font-semibold text-green-700">First to call today</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </DemoLayout>

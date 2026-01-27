@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get Listings | AI-Powered Seller Predictions for Real Estate Agents</title>
+  <meta name="description" content="Join 1,200+ Australian agents using AI to find sellers before anyone else.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAtsLXdtThqINNOBUzxJRLAtk3LyVpa7k&libraries=places&callback=initAutocomplete" async defer></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#dc2626', 'primary-dark': '#b91c1c' },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    .gradient-text { background: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero-gradient { background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 50%, #fafafa 100%); }
+    .hero-pattern {
+      background-image: radial-gradient(circle at 1px 1px, #e5e7eb 1px, transparent 0);
+      background-size: 40px 40px;
+    }
+    
+    .cta-button { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); transition: all 0.3s ease; }
+    .cta-button:hover { transform: translateY(-3px); box-shadow: 0 15px 40px rgba(220, 38, 38, 0.4); }
+    
+    .hot-button { background: linear-gradient(135deg, #ff4500 0%, #ff6b00 50%, #ff4500 100%); background-size: 200% 200%; animation: hotGradient 2s ease infinite; box-shadow: 0 0 20px rgba(255, 69, 0, 0.5); transition: all 0.3s; }
+    .hot-button:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255, 69, 0, 0.7); }
+    @keyframes hotGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    
+    /* --- ENHANCED RED "HOT LEADS" BUTTON --- */
+    .hot-leads-btn {
+      background: linear-gradient(135deg, #ff0000 0%, #dc2626 100%);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      animation: pulse-red 2s infinite; 
+    }
+
+    @keyframes pulse-red {
+      0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(255, 0, 0, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+    }
+
+    .hot-leads-btn::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 20%;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.4);
+      transform: rotate(30deg);
+      animation: shine 3.5s infinite;
+    }
+
+    @keyframes shine {
+      0% { left: -60%; }
+      25% { left: 120%; }
+      100% { left: 120%; }
+    }
+
+    .hot-leads-btn:hover {
+      transform: scale(1.05) translateY(-2px);
+      filter: brightness(1.1);
+      box-shadow: 0 20px 40px -10px rgba(220, 38, 38, 0.7);
+    }
+
+    /* --- FLOATING SIGNAL CARDS --- */
+    @keyframes signal-float {
+      0% { transform: translateY(20px); opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { transform: translateY(-40px); opacity: 0; }
+    }
+
+    .signal-card {
+      position: absolute;
+      background: white;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-left: 3px solid #dc2626;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+      animation: signal-float 9s infinite ease-in-out;
+      pointer-events: none;
+      z-index: 5;
+      min-width: 220px;
+    }
+
+    /* Agent Type Toggle Buttons */
+    .agent-type-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #9ca3af;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .agent-type-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+    .agent-type-btn.active {
+      background: linear-gradient(135deg, #dc2626 0%, #f97316 100%);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+    }
+    
+    /* Graph Line Animation */
+    .graph-line {
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: drawLine 2s ease-out forwards;
+    }
+    @keyframes drawLine {
+      to { stroke-dashoffset: 0; }
+    }
+
+    .signal-1 { top: 25%; left: 8%; animation-delay: 0s; }
+    .signal-2 { top: 55%; left: 5%; animation-delay: 4.5s; }
+    .signal-3 { top: 28%; right: 8%; animation-delay: 2.2s; }
+    .signal-4 { top: 60%; right: 5%; animation-delay: 6.7s; }
+
+    .suburb-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 16px; box-shadow: 0 25px 50px rgba(0,0,0,0.2); margin-top: 8px; max-height: 320px; overflow-y: auto; z-index: 100; }
+    .suburb-item { padding: 14px 18px; cursor: pointer; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #f3f4f6; }
+    .suburb-item:hover { background: #fef2f2; }
+
+    /* Google Places Autocomplete Styling */
+    .pac-container {
+      border-radius: 16px !important;
+      border: none !important;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15) !important;
+      margin-top: 8px !important;
+      font-family: 'Inter', sans-serif !important;
+      z-index: 9999 !important;
+    }
+    .pac-item {
+      padding: 12px 16px !important;
+      font-size: 15px !important;
+      cursor: pointer !important;
+    }
+    .pac-item:hover {
+      background: #fef2f2 !important;
+    }
+    .pac-item-query {
+      font-size: 15px !important;
+      font-weight: 600 !important;
+    }
+    .pac-matched {
+      font-weight: 700 !important;
+    }
+
+    /* --- LOGO SLIDER --- */
+    .logo-slider-container {
+      position: relative;
+      padding: 20px 0;
+      overflow: hidden;
+    }
+    
+    .logo-slider-row {
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    
+    .logo-slider-row:last-child {
+      margin-bottom: 0;
+    }
+    
+    .logo-slider {
+      overflow: hidden;
+      position: relative;
+      width: 100%;
+      padding: 5px 0;
+      background: white;
+    }
+    
+    .logo-slider::before,
+    .logo-slider::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      width: 150px;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+    
+    .logo-slider::before {
+      left: 0;
+      background: linear-gradient(to right, white 0%, transparent 100%);
+    }
+    
+    .logo-slider::after {
+      right: 0;
+      background: linear-gradient(to left, white 0%, transparent 100%);
+    }
+    
+    .logo-track {
+      display: flex;
+      animation: scroll-logos 50s linear infinite;
+      width: max-content;
+      gap: 12px;
+    }
+    
+    .logo-track-reverse {
+      display: flex;
+      animation: scroll-logos-reverse 50s linear infinite;
+      width: max-content;
+      gap: 12px;
+    }
+    
+    .logo-track:hover,
+    .logo-track-reverse:hover {
+      animation-play-state: paused;
+    }
+    
+    @keyframes scroll-logos {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    
+    @keyframes scroll-logos-reverse {
+      0% { transform: translateX(-50%); }
+      100% { transform: translateX(0); }
+    }
+    
+    .logo-item {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      height: 50px;
+      border-radius: 9999px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid #e5e7eb;
+    }
+    
+    .logo-item img {
+      height: 50px;
+      width: auto;
+      object-fit: cover;
+      transition: all 0.3s ease;
+      border-radius: 9999px;
+    }
+    
+    .logo-item:hover img {
+      transform: scale(1.05);
+    }
+
+    @media (max-width: 1024px) { .signal-card { display: none; } }
+  </style>
+</head>
+<body class="font-sans antialiased bg-white">
+
+<nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-20">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-primary flex items-center justify-center shadow-lg">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+        </div>
+        <span class="text-2xl font-bold text-gray-900">Get Listings</span>
+      </div>
+      <div class="hidden lg:flex items-center gap-10">
+        <!-- Products Dropdown -->
+        <div class="relative group">
+          <button class="text-gray-600 hover:text-gray-900 transition font-medium flex items-center gap-1">
+            Products
+            <svg class="w-4 h-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div class="absolute top-full left-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+            <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 min-w-[280px]">
+              <a href="#features" class="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition group/item">
+                <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900 group-hover/item:text-red-600 transition">Get Listings App</div>
+                  <div class="text-sm text-gray-500">AI seller scores & predictions platform</div>
+                </div>
+              </a>
+              <a href="leads.html" class="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition group/item">
+                <div class="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900 group-hover/item:text-orange-600 transition">Exclusive Seller Leads</div>
+                  <div class="text-sm text-gray-500">Pre-qualified leads delivered to you</div>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+        <a href="#for-agents" class="text-gray-600 hover:text-gray-900 transition font-medium">For Agents</a>
+        <a href="#get-started" class="text-gray-600 hover:text-gray-900 transition font-medium">Get Started</a>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="demo.html" class="hidden sm:block text-gray-600 hover:text-gray-900 transition font-medium px-4 py-2">Login</a>
+        <a href="#get-started" class="cta-button text-white font-semibold px-6 py-3 rounded-xl">Start Free Trial</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<section class="hero-gradient hero-pattern min-h-[90vh] flex items-center pt-20 relative overflow-hidden">
+  <div class="absolute inset-0 overflow-hidden">
+    <div class="absolute top-20 left-10 w-72 h-72 bg-red-100 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-20 right-10 w-96 h-96 bg-orange-100 rounded-full blur-3xl"></div>
+
+    <div class="signal-card signal-1 p-4 rounded-2xl shadow-2xl">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center text-xl">📊</div>
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-primary font-bold">New Signal</div>
+          <div class="text-gray-900 font-medium text-sm">Valuation Requested</div>
+          <div class="text-gray-400 text-[10px]">Bondi • 2 mins ago</div>
+        </div>
+      </div>
+    </div>
+    <div class="signal-card signal-2 p-4 rounded-2xl shadow-2xl">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center text-xl">🏷️</div>
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-orange-600 font-bold">AI Match</div>
+          <div class="text-gray-900 font-medium text-sm">Garage Sale Detected</div>
+          <div class="text-gray-400 text-[10px]">Toorak • Just now</div>
+        </div>
+      </div>
+    </div>
+    <div class="signal-card signal-3 p-4 rounded-2xl shadow-2xl">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center text-xl">🏠</div>
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-green-600 font-bold">Listing Alert</div>
+          <div class="text-gray-900 font-medium text-sm">FSBO Listing Found</div>
+          <div class="text-gray-400 text-[10px]">Broadbeach • 5 mins ago</div>
+        </div>
+      </div>
+    </div>
+    <div class="signal-card signal-4 p-4 rounded-2xl shadow-2xl">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">🏗️</div>
+        <div>
+          <div class="text-[10px] uppercase tracking-widest text-blue-600 font-bold">Predictive</div>
+          <div class="text-gray-900 font-medium text-sm">Renovation Permit</div>
+          <div class="text-gray-400 text-[10px]">Double Bay • 12 mins ago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+    <div class="text-center max-w-5xl mx-auto">
+      
+      <div class="inline-flex items-center gap-3 bg-white shadow-lg border border-gray-200 rounded-full px-5 py-2.5 mb-6">
+        <div class="flex -space-x-2">
+          <img src="https://randomuser.me/api/portraits/women/44.jpg" class="w-7 h-7 rounded-full border-2 border-white shadow-sm" alt="">
+          <img src="https://randomuser.me/api/portraits/men/32.jpg" class="w-7 h-7 rounded-full border-2 border-white shadow-sm" alt="">
+          <img src="https://randomuser.me/api/portraits/women/68.jpg" class="w-7 h-7 rounded-full border-2 border-white shadow-sm" alt="">
+        </div>
+        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+        <span class="text-gray-700 text-sm font-medium">Trusted by <strong class="text-gray-900">1,200+</strong> Australian agents</span>
+      </div>
+      
+      <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black text-gray-900 leading-[1.1] mb-4 tracking-tight">
+        Let AI Find Your<br><span class="gradient-text">Next Listing</span>
+      </h1>
+      
+      <p class="text-xl sm:text-2xl text-gray-600 mb-4 max-w-3xl mx-auto leading-relaxed">
+        Unlock AI seller scores & listing predictions on <strong class="text-gray-900">15M+ properties</strong>.
+      </p>
+      
+      <!-- Pointing Arrows -->
+      <div class="flex justify-center gap-8 mb-4 animate-bounce">
+        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+      </div>
+      
+      <div class="max-w-2xl mx-auto mb-8">
+        <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-2xl ring-1 ring-black/5">
+          <p class="text-gray-600 font-bold mb-4 text-lg text-center">🔍 Find high-probability sellers in your suburb</p>
+          <div class="relative" id="suburb-search-container">
+            <div class="flex flex-col sm:flex-row gap-4">
+              <div class="flex-1 relative">
+                <div class="flex items-center gap-3 bg-gray-50 border-2 border-gray-100 rounded-2xl px-5 py-5 focus-within:border-primary focus-within:bg-white transition-all">
+                  <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  </svg>
+                  <input type="text" id="suburb-input" class="flex-1 bg-transparent outline-none text-gray-900 placeholder-gray-400 text-xl font-medium" placeholder="Bondi, NSW" autocomplete="off">
+                </div>
+                <div id="suburb-dropdown" class="suburb-dropdown hidden"></div>
+              </div>
+              <button id="search-btn" class="hot-leads-btn text-white font-black px-6 py-4 rounded-2xl text-lg flex items-center justify-center gap-2 group whitespace-nowrap">
+                <span>SEE LEADS</span>
+                <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-gray-100 text-sm text-gray-500">
+            <span class="flex items-center gap-1.5 font-medium"><span class="text-green-500">✓</span> 7-day free trial</span>
+            <span class="flex items-center gap-1.5 font-medium"><span class="text-green-500">✓</span> No credit card</span>
+            <span class="flex items-center gap-1.5 font-medium"><span class="text-green-500">✓</span> Cancel anytime</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUSTED BY SECTION -->
+<section class="py-12 bg-white border-b border-gray-100 overflow-hidden">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-8">
+      <p class="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-2">Trusted by leading agencies across Australia</p>
+      <h3 class="text-2xl font-bold text-gray-900">Join <span id="agent-counter">0</span>+ agents already winning more listings</h3>
+    </div>
+  </div>
+  
+  <div class="logo-slider-container">
+    <!-- First row - scrolls left -->
+    <div class="logo-slider-row logo-slider-row-1">
+      <div class="logo-slider">
+        <div class="logo-track">
+          <div class="logo-item"><img src="logos/3.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/18.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/7.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/22.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/1.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/14.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/9.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/25.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/5.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/16.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/11.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/20.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/2.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/13.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/8.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/24.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/4.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/17.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/10.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/21.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/6.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/15.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/12.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/23.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/19.png" alt="Agency logo"></div>
+          <!-- Duplicate for seamless loop -->
+          <div class="logo-item"><img src="logos/3.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/18.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/7.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/22.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/1.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/14.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/9.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/25.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/5.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/16.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/11.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/20.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/2.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/13.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/8.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/24.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/4.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/17.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/10.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/21.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/6.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/15.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/12.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/23.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/19.png" alt="Agency logo"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Second row - scrolls right (opposite direction) -->
+    <div class="logo-slider-row logo-slider-row-2">
+      <div class="logo-slider">
+        <div class="logo-track-reverse">
+          <div class="logo-item"><img src="logos/58.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/71.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/53.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/66.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/75.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/51.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/64.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/56.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/69.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/62.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/73.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/55.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/68.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/52.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/65.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/74.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/57.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/70.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/54.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/63.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/72.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/59.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/67.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/60.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/61.png" alt="Agency logo"></div>
+          <!-- Duplicate for seamless loop -->
+          <div class="logo-item"><img src="logos/58.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/71.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/53.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/66.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/75.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/51.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/64.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/56.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/69.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/62.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/73.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/55.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/68.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/52.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/65.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/74.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/57.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/70.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/54.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/63.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/72.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/59.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/67.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/60.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/61.png" alt="Agency logo"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Third row - scrolls left (same as first) -->
+    <div class="logo-slider-row logo-slider-row-3">
+      <div class="logo-slider">
+        <div class="logo-track">
+          <div class="logo-item"><img src="logos/26.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/42.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/31.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/48.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/28.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/39.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/33.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/50.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/27.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/44.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/35.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/46.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/29.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/41.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/32.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/49.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/30.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/43.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/36.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/47.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/34.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/40.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/37.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/45.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/38.png" alt="Agency logo"></div>
+          <!-- Duplicate for seamless loop -->
+          <div class="logo-item"><img src="logos/26.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/42.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/31.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/48.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/28.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/39.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/33.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/50.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/27.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/44.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/35.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/46.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/29.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/41.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/32.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/49.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/30.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/43.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/36.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/47.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/34.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/40.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/37.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/45.png" alt="Agency logo"></div>
+          <div class="logo-item"><img src="logos/38.png" alt="Agency logo"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TWO PRODUCTS SECTION -->
+<section class="py-20 bg-gray-50">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <div class="inline-flex items-center gap-2 bg-red-100 border border-red-200 rounded-full px-4 py-2 mb-6">
+        <span class="text-red-600 text-sm font-semibold">🚀 Two Ways to Win More Listings</span>
+      </div>
+      <h2 class="text-4xl sm:text-5xl font-black text-gray-900 mb-6 leading-tight">
+        Self-Serve <span class="text-red-600">+</span> Done-For-You
+      </h2>
+      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+        Use our powerful AI platform yourself, or let our team deliver exclusive seller leads straight to you.
+      </p>
+    </div>
+    
+    <div class="grid md:grid-cols-2 gap-8 relative">
+      <!-- Product 1: The App -->
+      <div class="flex flex-col h-full">
+        <div class="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300 group flex-1 flex flex-col">
+          <div class="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 mb-4">Get Listings App</h3>
+          <p class="text-gray-600 mb-6 min-h-[48px]">
+            AI-powered platform to find sellers in your area with predictive scores and prospecting tools.
+          </p>
+          <ul class="space-y-3 mb-8 flex-1">
+            <li class="flex items-center gap-3 text-gray-700">
+              <span class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-sm">✓</span>
+              AI seller scores on 15M+ properties
+            </li>
+            <li class="flex items-center gap-3 text-gray-700">
+              <span class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-sm">✓</span>
+              12+ seller signals tracked daily
+            </li>
+            <li class="flex items-center gap-3 text-gray-700">
+              <span class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-sm">✓</span>
+              Full control over your prospecting
+            </li>
+          </ul>
+          <a href="app.html" class="inline-flex items-center gap-2 bg-gray-900 text-white font-bold px-6 py-4 rounded-xl hover:bg-gray-800 transition-all group/btn mt-auto">
+            <span>Explore the App</span>
+            <svg class="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Product 2: Exclusive Seller Leads -->
+      <div class="flex flex-col h-full">
+        <div class="bg-white rounded-3xl p-8 shadow-xl border-2 border-red-200 hover:shadow-2xl transition-all duration-300 group relative overflow-hidden flex-1 flex flex-col">
+          <div class="absolute top-4 right-4">
+            <span class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">MOST POPULAR</span>
+          </div>
+          <div class="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 mb-4">Exclusive Seller Leads</h3>
+          <p class="text-gray-600 mb-6 min-h-[48px]">
+            Done-for-you service delivering pre-qualified seller leads exclusive to your territory.
+          </p>
+          <ul class="space-y-3 mb-8 flex-1">
+            <li class="flex items-center gap-3 text-gray-700">
+              <span class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-sm">✓</span>
+              Pre-qualified, valuation-ready leads
+            </li>
+            <li class="flex items-center gap-3 text-gray-700">
+              <span class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-sm">✓</span>
+              100% exclusive to your territory
+            </li>
+            <li class="flex items-center gap-3 text-gray-700">
+              <span class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-sm">✓</span>
+              Done-for-you — zero effort required
+            </li>
+          </ul>
+          <a href="leads.html" class="inline-flex items-center gap-2 bg-red-600 text-white font-bold px-6 py-4 rounded-xl hover:bg-red-700 transition-all group/btn mt-auto">
+            <span>Get Exclusive Leads</span>
+            <svg class="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Merging Arrows -->
+    <div class="hidden md:flex justify-center items-center gap-4 my-8">
+      <div class="flex-1 flex justify-end">
+        <div class="w-24 h-0.5 bg-gradient-to-r from-transparent to-red-400"></div>
+      </div>
+      <div class="flex flex-col items-center">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-red-400 rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+          </svg>
+          <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m0 0l-4-4m4 4l4-4"/>
+            </svg>
+          </div>
+          <svg class="w-5 h-5 text-red-400 -rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+          </svg>
+        </div>
+      </div>
+      <div class="flex-1 flex justify-start">
+        <div class="w-24 h-0.5 bg-gradient-to-l from-transparent to-red-400"></div>
+      </div>
+    </div>
+    
+    <!-- Combined Maximum Results -->
+    <div class="bg-gradient-to-r from-red-600 via-red-500 to-orange-500 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden shadow-2xl">
+      <!-- Decorative elements -->
+      <div class="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full -translate-x-16 -translate-y-16"></div>
+      <div class="absolute bottom-0 right-0 w-40 h-40 bg-white/10 rounded-full translate-x-20 translate-y-20"></div>
+      
+      <div class="relative">
+        <div class="inline-flex items-center gap-2 bg-white/20 border border-white/30 rounded-full px-5 py-2 mb-6">
+          <span class="text-white text-sm font-bold">⚡ COMBINE BOTH FOR MAXIMUM RESULTS</span>
+        </div>
+        
+        <div class="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 mb-8">
+          <div class="flex items-center gap-3 bg-white/15 rounded-2xl px-6 py-4">
+            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <span class="text-white font-bold">App</span>
+          </div>
+          
+          <div class="text-4xl font-black text-white">+</div>
+          
+          <div class="flex items-center gap-3 bg-white/15 rounded-2xl px-6 py-4">
+            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+              </svg>
+            </div>
+            <span class="text-white font-bold">Leads</span>
+          </div>
+          
+          <div class="text-4xl font-black text-white">=</div>
+          
+          <div class="flex items-center gap-3 bg-white rounded-2xl px-6 py-4 shadow-lg">
+            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+              <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            </div>
+            <span class="text-gray-900 font-black">Maximum Results</span>
+          </div>
+        </div>
+        
+        <p class="text-white/90 max-w-2xl mx-auto mb-8 text-lg">
+          Top-performing agents use the app for daily prospecting <strong class="text-white">AND</strong> receive exclusive leads for guaranteed opportunities. It's the winning combination that 10x's your listing pipeline.
+        </p>
+        
+        <a href="#get-started" class="inline-flex items-center gap-2 bg-white text-red-600 font-bold px-8 py-4 rounded-xl hover:bg-gray-100 transition-all shadow-lg hover:shadow-xl hover:scale-105">
+          <span>Get Started for Free</span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI REVOLUTION SECTION -->
+<section class="py-24 bg-gradient-to-b from-gray-900 via-gray-900 to-black relative overflow-hidden">
+  <!-- Background decoration -->
+  <div class="absolute inset-0 opacity-10">
+    <div class="absolute top-20 left-10 w-72 h-72 bg-red-500 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-20 right-10 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
+  </div>
+  
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <div class="text-center mb-16">
+      <div class="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-full px-4 py-2 mb-6">
+        <span class="text-red-400 text-sm font-semibold">⚡ The AI Revolution Is Here</span>
+      </div>
+      <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight">
+        AI Is Reshaping Real Estate.<br><span class="text-red-500">Are You Ready?</span>
+      </h2>
+      <p class="text-xl text-gray-400 max-w-3xl mx-auto">
+        The agents who embrace AI now will dominate. The ones who wait will be left behind.
+      </p>
+    </div>
+    
+    <div class="grid md:grid-cols-2 gap-8 mb-16">
+      <!-- Left Column - The Problem -->
+      <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8">
+        <div class="text-red-400 text-sm font-bold uppercase tracking-widest mb-4">The Reality</div>
+        <h3 class="text-2xl font-bold text-white mb-6">What's Happening Right Now</h3>
+        <div class="space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center text-xl flex-shrink-0">📊</div>
+            <div>
+              <p class="text-white font-semibold">Top agencies are using AI to predict sellers</p>
+              <p class="text-gray-400 text-sm">They know who's likely to sell months before the "For Sale" sign goes up.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🎯</div>
+            <div>
+              <p class="text-white font-semibold">AI spots patterns humans can't see</p>
+              <p class="text-gray-400 text-sm">Subtle signals across millions of data points reveal selling intent.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center text-xl flex-shrink-0">⏱️</div>
+            <div>
+              <p class="text-white font-semibold">Speed wins in prospecting</p>
+              <p class="text-gray-400 text-sm">The first agent to reach a motivated seller has a 70% higher chance of winning the listing.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Column - The Opportunity -->
+      <div class="bg-gradient-to-br from-red-500/10 to-orange-500/10 backdrop-blur-sm border border-red-500/20 rounded-3xl p-8">
+        <div class="text-green-400 text-sm font-bold uppercase tracking-widest mb-4">The Opportunity</div>
+        <h3 class="text-2xl font-bold text-white mb-6">Your Competitive Edge</h3>
+        <div class="space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center text-xl flex-shrink-0">✅</div>
+            <div>
+              <p class="text-white font-semibold">You don't need to be a tech expert</p>
+              <p class="text-gray-400 text-sm">Get Listings does the heavy lifting. You just respond to warm leads.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center text-xl flex-shrink-0">✅</div>
+            <div>
+              <p class="text-white font-semibold">Level the playing field</p>
+              <p class="text-gray-400 text-sm">Access the same AI insights that major agencies pay six figures for.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center text-xl flex-shrink-0">✅</div>
+            <div>
+              <p class="text-white font-semibold">Work smarter, not harder</p>
+              <p class="text-gray-400 text-sm">Stop door-knocking cold. Start conversations with people who actually want to sell.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+      <div class="text-center">
+        <div class="text-4xl sm:text-5xl font-black text-white mb-2">73%</div>
+        <p class="text-gray-400 text-sm">of top agents now use AI tools</p>
+      </div>
+      <div class="text-center">
+        <div class="text-4xl sm:text-5xl font-black text-white mb-2">5x</div>
+        <p class="text-gray-400 text-sm">more listings with predictive data</p>
+      </div>
+      <div class="text-center">
+        <div class="text-4xl sm:text-5xl font-black text-white mb-2">2hrs</div>
+        <p class="text-gray-400 text-sm">saved daily on prospecting</p>
+      </div>
+      <div class="text-center">
+        <div class="text-4xl sm:text-5xl font-black text-white mb-2">89%</div>
+        <p class="text-gray-400 text-sm">of leads are pre-qualified</p>
+      </div>
+    </div>
+    
+    <!-- Interactive Career Graph -->
+    <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-6 sm:p-10 mb-16">
+      <div class="text-center mb-8">
+        <h3 class="text-2xl sm:text-3xl font-bold text-white mb-2">Agent Career Trajectory</h3>
+        <p class="text-gray-400">See how AI transforms an agent's success over time</p>
+      </div>
+      
+      <!-- Agent Type Toggle -->
+      <div class="flex justify-center gap-2 mb-8">
+        <button onclick="setAgentType('junior')" id="btn-junior" class="agent-type-btn active px-5 py-2 rounded-full text-sm font-semibold transition-all">Junior Agent</button>
+        <button onclick="setAgentType('established')" id="btn-established" class="agent-type-btn px-5 py-2 rounded-full text-sm font-semibold transition-all">Established Agent</button>
+        <button onclick="setAgentType('top')" id="btn-top" class="agent-type-btn px-5 py-2 rounded-full text-sm font-semibold transition-all">Top Producer</button>
+      </div>
+      
+      <!-- Graph Container -->
+      <div class="relative bg-gray-800/50 rounded-2xl p-4 sm:p-6" style="height: 320px;">
+        <!-- Y-Axis Labels -->
+        <div class="absolute left-0 top-4 bottom-12 w-16 flex flex-col justify-between text-right pr-2">
+          <span class="text-xs text-gray-500">$1M+</span>
+          <span class="text-xs text-gray-500">$500K</span>
+          <span class="text-xs text-gray-500">$200K</span>
+          <span class="text-xs text-gray-500">$50K</span>
+        </div>
+        
+        <!-- Graph Area -->
+        <div class="ml-16 mr-4 h-full relative">
+          <!-- Grid Lines -->
+          <div class="absolute inset-0 flex flex-col justify-between pb-8">
+            <div class="border-t border-gray-700/50"></div>
+            <div class="border-t border-gray-700/50"></div>
+            <div class="border-t border-gray-700/50"></div>
+            <div class="border-t border-gray-700/50"></div>
+          </div>
+          
+          <!-- SVG Graph -->
+          <svg class="absolute inset-0 w-full h-full" style="padding-bottom: 32px;" viewBox="0 0 350 220" preserveAspectRatio="none">
+            <!-- Without AI Line (gray, declining) -->
+            <path id="line-without-ai" class="graph-line" fill="none" stroke="#6b7280" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8,4"/>
+            
+            <!-- With AI Line (gradient, growing) -->
+            <defs>
+              <linearGradient id="ai-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#dc2626"/>
+                <stop offset="100%" style="stop-color:#f97316"/>
+              </linearGradient>
+            </defs>
+            <path id="line-with-ai" class="graph-line" fill="none" stroke="url(#ai-gradient)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          
+          <!-- Legend -->
+          <div class="absolute bottom-0 left-0 right-0 flex justify-center gap-6 text-sm py-2">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-1 bg-gradient-to-r from-red-600 to-orange-500 rounded"></div>
+              <span class="text-white font-medium">AI Adoption</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-1 bg-gray-500 rounded" style="background: repeating-linear-gradient(90deg, #6b7280 0px, #6b7280 8px, transparent 8px, transparent 12px);"></div>
+              <span class="text-gray-400">No AI</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- X-Axis Labels -->
+        <div class="absolute bottom-2 left-16 right-4 flex justify-between text-xs text-gray-500">
+          <span>Year 1</span>
+          <span>Year 2</span>
+          <span>Year 3</span>
+          <span>Year 4</span>
+          <span>Year 5</span>
+        </div>
+        
+        <!-- Outcome Labels -->
+        <div id="outcome-with-ai" class="absolute right-4 text-right transition-all duration-700" style="top: 15%;">
+          <div class="text-green-400 font-bold text-lg">$420K/yr</div>
+          <div class="text-gray-400 text-xs">With AI</div>
+        </div>
+        <div id="outcome-without-ai" class="absolute right-4 text-right transition-all duration-700" style="top: 65%;">
+          <div class="text-gray-400 font-bold text-lg">$85K/yr</div>
+          <div class="text-gray-500 text-xs">Without AI</div>
+        </div>
+      </div>
+      
+      <!-- Key Insight -->
+      <div id="graph-insight" class="mt-6 text-center">
+        <p class="text-gray-300"><span class="text-white font-bold">Junior agents with AI</span> out-earn <span class="text-white font-bold">10-year veterans</span> without it within 3 years.</p>
+      </div>
+    </div>
+    
+    <!-- Quote -->
+    <div class="bg-white/5 border border-white/10 rounded-3xl p-8 sm:p-12 text-center">
+      <p class="text-2xl sm:text-3xl text-white font-medium italic mb-6 leading-relaxed">
+        "In the next 5 years, there will be two types of agents: those who use AI, and those who are out of business."
+      </p>
+      <p class="text-gray-400">— Industry analysts agree: <span class="text-white font-semibold">AI adoption is no longer optional</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- THE PROBLEM SECTION -->
+<section class="py-20 bg-white">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <div class="inline-flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-full px-4 py-2 mb-6">
+        <span class="text-gray-700 text-sm font-semibold">🤔 The Challenge</span>
+      </div>
+      <h2 class="text-4xl sm:text-5xl font-black text-gray-900 mb-6 leading-tight">
+        Traditional Lead Gen Is <span class="text-red-600">Broken</span>
+      </h2>
+      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+        The old playbook doesn't work anymore. Here's what agents are up against.
+      </p>
+    </div>
+    
+    <div class="grid md:grid-cols-3 gap-8 mb-16">
+      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 flex flex-col">
+        <div class="text-4xl mb-4">🚪</div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3 min-h-[56px]">Door Knocking Is Dead</h3>
+        <p class="text-gray-600 flex-1">Homeowners don't answer doors anymore. You're wasting hours for maybe one conversation — and that person probably isn't even thinking of selling.</p>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 flex flex-col">
+        <div class="text-4xl mb-4">📞</div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3 min-h-[56px]">Cold Calling Kills Motivation</h3>
+        <p class="text-gray-600 flex-1">Rejection after rejection. Even top performers burn out. And with call screening, you're lucky if 10% even pick up.</p>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 flex flex-col">
+        <div class="text-4xl mb-4">💸</div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3 min-h-[56px]">Lead Sharing Woes</h3>
+        <p class="text-gray-600 flex-1">Paying for leads that go to 5 other agents? By the time you call, they've already spoken to your competition. It's a race to the bottom.</p>
+      </div>
+    </div>
+    
+    <div class="bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-8 md:p-12">
+      <div class="text-center mb-8">
+        <h3 class="text-2xl md:text-3xl font-bold text-white mb-4">The Result?</h3>
+        <p class="text-gray-300 text-lg max-w-2xl mx-auto">
+          Agents are working harder than ever but getting fewer listings. The winners are the ones who've figured out how to <strong class="text-white">find sellers before they list</strong> — not after.
+        </p>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+        <div class="text-center">
+          <div class="text-4xl md:text-5xl font-black text-red-400 mb-2">67%</div>
+          <div class="text-sm text-gray-400">of agents struggle<br>with lead gen</div>
+        </div>
+        <div class="text-center">
+          <div class="text-4xl md:text-5xl font-black text-red-400 mb-2">2.3hrs</div>
+          <div class="text-sm text-gray-400">wasted daily on<br>cold prospecting</div>
+        </div>
+        <div class="text-center">
+          <div class="text-4xl md:text-5xl font-black text-red-400 mb-2">12%</div>
+          <div class="text-sm text-gray-400">conversion rate on<br>shared leads</div>
+        </div>
+        <div class="text-center">
+          <div class="text-4xl md:text-5xl font-black text-green-400 mb-2">3.2x</div>
+          <div class="text-sm text-gray-400">more listings with<br>AI-powered leads</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OUR STORY SECTION -->
+<section class="py-20 bg-gray-50">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid lg:grid-cols-2 gap-16 items-center">
+      <div>
+        <div class="inline-flex items-center gap-2 bg-red-100 border border-red-200 rounded-full px-4 py-2 mb-6">
+          <span class="text-red-600 text-sm font-semibold">📖 Our Story</span>
+        </div>
+        <h2 class="text-4xl sm:text-5xl font-black text-gray-900 mb-6 leading-tight">
+          We Built What We Wished Existed
+        </h2>
+        <p class="text-xl text-gray-600 mb-6">
+          Get Listings was born from a simple frustration: <strong class="text-gray-900">why is finding sellers so hard?</strong>
+        </p>
+        <p class="text-gray-600 mb-6">
+          We spent years in the real estate industry watching talented agents burn out on cold calling and door knocking. We saw the same pattern everywhere — the agents who won weren't necessarily the best negotiators. They were just the first ones to reach motivated sellers.
+        </p>
+        <p class="text-gray-600 mb-6">
+          So we asked: what if we could use AI and data to predict who's about to sell — before they even list? What if we could give every agent access to the same intelligence that only big franchises could afford?
+        </p>
+        <p class="text-gray-600 mb-8">
+          That's Get Listings. <strong class="text-gray-900">AI-powered seller predictions for the everyday agent.</strong>
+        </p>
+        <div class="flex items-center gap-4">
+          <img src="https://randomuser.me/api/portraits/men/75.jpg" class="w-14 h-14 rounded-full border-2 border-white shadow-lg" alt="Founder">
+          <div>
+            <div class="font-bold text-gray-900">Founded in Australia</div>
+            <div class="text-gray-500 text-sm">Built by agents, for agents</div>
+          </div>
+        </div>
+      </div>
+      <div class="relative">
+        <div class="bg-white rounded-3xl p-6 shadow-2xl">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-red-50 rounded-2xl p-6 text-center">
+              <div class="text-4xl font-black text-red-600 mb-2">15M+</div>
+              <div class="text-gray-600 text-sm">Properties analysed</div>
+            </div>
+            <div class="bg-green-50 rounded-2xl p-6 text-center">
+              <div class="text-4xl font-black text-green-600 mb-2">1,200+</div>
+              <div class="text-gray-600 text-sm">Agents trust us</div>
+            </div>
+            <div class="bg-blue-50 rounded-2xl p-6 text-center">
+              <div class="text-4xl font-black text-blue-600 mb-2">12+</div>
+              <div class="text-gray-600 text-sm">Seller signals tracked</div>
+            </div>
+            <div class="bg-purple-50 rounded-2xl p-6 text-center">
+              <div class="text-4xl font-black text-purple-600 mb-2">89%</div>
+              <div class="text-gray-600 text-sm">Lead quality rate</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CASE STUDIES / RESULTS SECTION -->
+<section class="py-20 bg-white">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <div class="inline-flex items-center gap-2 bg-green-100 border border-green-200 rounded-full px-4 py-2 mb-6">
+        <span class="text-green-700 text-sm font-semibold">📊 Real Results</span>
+      </div>
+      <h2 class="text-4xl sm:text-5xl font-black text-gray-900 mb-6 leading-tight">
+        Agents Are Winning More Listings
+      </h2>
+      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+        Don't take our word for it. Here's what the numbers say.
+      </p>
+    </div>
+    
+    <!-- Big Stats -->
+    <div class="grid md:grid-cols-4 gap-6 mb-16">
+      <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-center text-white">
+        <div class="text-5xl font-black mb-2">3.2x</div>
+        <div class="text-red-100">More listings won<br>on average</div>
+      </div>
+      <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-center text-white">
+        <div class="text-5xl font-black mb-2">47%</div>
+        <div class="text-green-100">Higher conversion<br>rate on leads</div>
+      </div>
+      <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-center text-white">
+        <div class="text-5xl font-black mb-2">2 wks</div>
+        <div class="text-blue-100">Earlier access to<br>motivated sellers</div>
+      </div>
+      <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-center text-white">
+        <div class="text-5xl font-black mb-2">$0</div>
+        <div class="text-purple-100">Wasted on<br>shared leads</div>
+      </div>
+    </div>
+    
+    <!-- Case Study Cards -->
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="bg-gray-50 rounded-3xl p-8 border border-gray-100">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://randomuser.me/api/portraits/women/65.jpg" class="w-16 h-16 rounded-full border-2 border-white shadow-lg" alt="">
+          <div>
+            <div class="font-bold text-gray-900 text-lg">Sarah M.</div>
+            <div class="text-gray-500">Independent Agent, Sydney</div>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-6 mb-6">
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div class="text-sm text-gray-500 mb-1">Before</div>
+              <div class="text-2xl font-bold text-gray-400">4</div>
+              <div class="text-xs text-gray-400">listings/year</div>
+            </div>
+            <div class="flex items-center justify-center">
+              <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </div>
+            <div>
+              <div class="text-sm text-gray-500 mb-1">After</div>
+              <div class="text-2xl font-bold text-green-600">11</div>
+              <div class="text-xs text-gray-500">listings/year</div>
+            </div>
+          </div>
+        </div>
+        <p class="text-gray-600 italic">"I was skeptical at first, but the AI actually works. I got my first listing within 2 weeks of signing up — a seller I never would have found otherwise."</p>
+      </div>
+      
+      <div class="bg-gray-50 rounded-3xl p-8 border border-gray-100">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://randomuser.me/api/portraits/men/42.jpg" class="w-16 h-16 rounded-full border-2 border-white shadow-lg" alt="">
+          <div>
+            <div class="font-bold text-gray-900 text-lg">James T.</div>
+            <div class="text-gray-500">Ray White, Melbourne</div>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-6 mb-6">
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div class="text-sm text-gray-500 mb-1">Before</div>
+              <div class="text-2xl font-bold text-gray-400">15hrs</div>
+              <div class="text-xs text-gray-400">prospecting/wk</div>
+            </div>
+            <div class="flex items-center justify-center">
+              <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </div>
+            <div>
+              <div class="text-sm text-gray-500 mb-1">After</div>
+              <div class="text-2xl font-bold text-green-600">4hrs</div>
+              <div class="text-xs text-gray-500">prospecting/wk</div>
+            </div>
+          </div>
+        </div>
+        <p class="text-gray-600 italic">"I used to spend entire days door knocking. Now I spend 30 minutes in the morning checking my hot leads and make targeted calls. Same results, 10% of the effort."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS SECTION -->
+<section class="py-20 bg-gray-50 overflow-hidden">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header with Facebook & Google badges -->
+    <div class="flex flex-col lg:flex-row items-center justify-between mb-12 gap-8">
+      <div class="flex items-center gap-3">
+        <svg class="w-10 h-10" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        <div>
+          <div class="font-bold text-gray-900 text-lg">facebook.</div>
+          <div class="flex gap-0.5 text-yellow-400 text-sm">★★★★★</div>
+        </div>
+      </div>
+      
+      <div class="text-center">
+        <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900">Verified <span class="text-primary">5-Star</span> Service</h2>
+        <p class="text-xl text-gray-500 mt-2">Real agents, real results</p>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <svg class="w-8 h-8" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        <div class="text-right">
+          <div class="font-bold text-gray-900">Google</div>
+          <div class="flex items-center gap-1 justify-end">
+            <span class="font-bold">5.0</span>
+            <span class="text-yellow-400 text-sm">★★★★★</span>
+          </div>
+          <div class="text-xs text-gray-500">Based on 31 reviews</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Navigation Arrows -->
+    <div class="flex justify-end gap-3 mb-6">
+      <button id="testimonial-prev" class="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition">
+        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <button id="testimonial-next" class="w-12 h-12 rounded-full bg-gray-900 hover:bg-gray-800 flex items-center justify-center transition">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+  
+  <!-- Testimonial Slider -->
+  <div class="relative">
+    <div id="testimonial-track" class="flex gap-6 transition-transform duration-500 ease-out pl-8" style="width: max-content;">
+      
+      <!-- Kalley Singh -->
+      <div class="testimonial-card bg-gray-50 rounded-3xl p-8 w-[400px] flex-shrink-0">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">KS</div>
+            <div>
+              <div class="font-bold text-gray-900 text-lg">Kalley Singh</div>
+              <div class="text-gray-500 text-xs uppercase tracking-wide">One Group Realty - Epping</div>
+            </div>
+          </div>
+          <div class="flex gap-0.5 text-yellow-400">★★★★★</div>
+        </div>
+        <p class="text-gray-600">"<strong class="text-gray-900">Leader of Facebook Lead Generation</strong>. Highly recommended."</p>
+      </div>
+      
+      <!-- William Teys -->
+      <div class="testimonial-card bg-gray-50 rounded-3xl p-8 w-[400px] flex-shrink-0">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-2xl font-bold">WT</div>
+            <div>
+              <div class="font-bold text-gray-900 text-lg">William Teys</div>
+              <div class="text-gray-500 text-xs uppercase tracking-wide">Crowne Real Estate - Ipswich</div>
+            </div>
+          </div>
+          <div class="flex gap-0.5 text-yellow-400">★★★★★</div>
+        </div>
+        <p class="text-gray-600">"Their performance and communication has been outstanding. I would <strong class="text-gray-900">recommend to others looking for a point of difference</strong> as I have with other agents in my office."</p>
+      </div>
+      
+      <!-- Steve Gott -->
+      <div class="testimonial-card bg-gray-50 rounded-3xl p-8 w-[450px] flex-shrink-0">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">SG</div>
+            <div>
+              <div class="font-bold text-gray-900 text-lg">Steve Gott</div>
+              <div class="text-gray-500 text-xs uppercase tracking-wide">Gott Realty</div>
+            </div>
+          </div>
+          <div class="flex gap-0.5 text-yellow-400">★★★★★</div>
+        </div>
+        <p class="text-gray-600">"<strong class="text-gray-900">I have been using Tom and the team for over 15 months</strong>. With their leads they have over delivered. I have received a number of leads that have turned into listings and sales. The best part is that they deliver what they say they are going to deliver."</p>
+      </div>
+      
+      <!-- Andrew Prescott -->
+      <div class="testimonial-card bg-gray-50 rounded-3xl p-8 w-[400px] flex-shrink-0">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">AP</div>
+            <div>
+              <div class="font-bold text-gray-900 text-lg">Andrew Prescott</div>
+              <div class="text-gray-500 text-xs uppercase tracking-wide">Clarke & Co Real Estate</div>
+            </div>
+          </div>
+          <div class="flex gap-0.5 text-yellow-400">★★★★★</div>
+        </div>
+        <p class="text-gray-600">"The staff were capable, friendly, and <strong class="text-gray-900">the service provided great flexibility</strong>. All up it was a positive and worthwhile experience."</p>
+      </div>
+      
+      <!-- Barbara Roberts -->
+      <div class="testimonial-card bg-gray-50 rounded-3xl p-8 w-[400px] flex-shrink-0">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white text-2xl font-bold">BR</div>
+            <div>
+              <div class="font-bold text-gray-900 text-lg">Barbara Roberts</div>
+              <div class="text-gray-500 text-xs uppercase tracking-wide">Acton | Belle Property Fremantle</div>
+            </div>
+          </div>
+          <div class="flex gap-0.5 text-yellow-400">★★★★★</div>
+        </div>
+        <p class="text-gray-600">"The team at Get Listings are absolutely fantastic! They work hard to <strong class="text-gray-900">tailor their marketing strategies to suit you</strong>. Would highly recommend!"</p>
+      </div>
+      
+      <!-- Brendon De Rosario -->
+      <div class="testimonial-card bg-gray-50 rounded-3xl p-8 w-[400px] flex-shrink-0">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold">BD</div>
+            <div>
+              <div class="font-bold text-gray-900 text-lg">Brendon De Rosario</div>
+              <div class="text-gray-500 text-xs uppercase tracking-wide">Semple Property Group</div>
+            </div>
+          </div>
+          <div class="flex gap-0.5 text-yellow-400">★★★★★</div>
+        </div>
+        <p class="text-gray-600">"The team at Get Listings are <strong class="text-gray-900">absolutely fantastic</strong>! Their communication is spot on and they work hard to tailor their marketing strategies to suit you."</p>
+      </div>
+      
+      <!-- Dwight Colbert -->
+      <div class="testimonial-card bg-gray-50 rounded-3xl p-8 w-[400px] flex-shrink-0">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-2xl font-bold">DC</div>
+            <div>
+              <div class="font-bold text-gray-900 text-lg">Dwight Colbert</div>
+              <div class="text-gray-500 text-xs uppercase tracking-wide">Ray White Aspley Group</div>
+            </div>
+          </div>
+          <div class="flex gap-0.5 text-yellow-400">★★★★★</div>
+        </div>
+        <p class="text-gray-600">"Over the past 6 weeks we have had a number of good quality leads and <strong class="text-gray-900">managed to convert a lead into a great listing</strong>."</p>
+      </div>
+      
+    </div>
+  </div>
+</section>
+
+<!-- CTA SECTION -->
+<section id="get-started" class="py-24 bg-gradient-to-br from-gray-900 via-gray-900 to-black relative overflow-hidden">
+  <!-- Background decoration -->
+  <div class="absolute inset-0 opacity-20">
+    <div class="absolute top-10 left-10 w-72 h-72 bg-red-500 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-10 right-10 w-96 h-96 bg-orange-500 rounded-full blur-3xl"></div>
+  </div>
+  
+  <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
+    <div class="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2 mb-6">
+      <span class="text-white text-sm font-semibold">🚀 Start Winning More Listings Today</span>
+    </div>
+    
+    <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight">
+      Ready to Transform<br>Your Prospecting?
+    </h2>
+    
+    <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+      Access our AI-powered portal to discover seller leads, get predictions on 15M+ properties, and start winning more listings.
+    </p>
+    
+    <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 mb-8 max-w-xl mx-auto">
+      <div class="flex items-center justify-center gap-6 mb-6">
+        <div class="text-center">
+          <div class="text-3xl font-black text-white">7</div>
+          <div class="text-sm text-gray-400">Day Free Trial</div>
+        </div>
+        <div class="w-px h-12 bg-white/20"></div>
+        <div class="text-center">
+          <div class="text-3xl font-black text-white">$0</div>
+          <div class="text-sm text-gray-400">Credit Card Required</div>
+        </div>
+        <div class="w-px h-12 bg-white/20"></div>
+        <div class="text-center">
+          <div class="text-3xl font-black text-white">2 min</div>
+          <div class="text-sm text-gray-400">Setup Time</div>
+        </div>
+      </div>
+      
+      <a href="portal.html" class="w-full hot-leads-btn text-white font-black px-8 py-5 rounded-2xl text-xl flex items-center justify-center gap-3 group">
+        <span>ACCESS THE PORTAL</span>
+        <svg class="w-6 h-6 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+        </svg>
+      </a>
+    </div>
+    
+    <p class="text-gray-500 text-sm">
+      Or explore our products: 
+      <a href="app.html" class="text-white hover:text-red-400 transition underline">Get Listings App</a> • 
+      <a href="leads.html" class="text-white hover:text-red-400 transition underline">Exclusive Seller Leads</a>
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-black text-gray-400 py-12">
+  <div class="max-w-7xl mx-auto px-4 text-center">
+    <div class="flex items-center justify-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-xl">🏠</div>
+      <span class="text-xl font-bold text-white">Get Listings</span>
+    </div>
+    <p class="mb-6">AI-powered lead intelligence for Australian real estate agents.</p>
+    <p class="text-sm">© 2026 Get Listings. All rights reserved. Made with ❤️ in Australia.</p>
+  </div>
+</footer>
+
+<script>
+let autocomplete;
+let selectedPlace = null;
+
+// === INTERACTIVE CAREER GRAPH ===
+const graphData = {
+  junior: {
+    withAI: "M 0,195 C 50,195 70,190 100,150 S 130,60 160,25 S 220,8 300,3",
+    withoutAI: "M 0,140 C 50,145 100,155 150,165 S 200,180 250,195 S 280,205 300,210",
+    aiY: 100,
+    labelWithAI: { top: "2%", value: "$420K/yr" },
+    labelWithoutAI: { top: "72%", value: "$65K/yr" },
+    insight: "<span class='text-white font-bold'>Junior agents with AI</span> out-earn <span class='text-white font-bold'>10-year veterans</span> without it within 3 years."
+  },
+  established: {
+    withAI: "M 0,140 C 50,138 70,130 100,100 S 130,45 160,20 S 220,8 300,3",
+    withoutAI: "M 0,100 C 50,105 100,115 150,130 S 200,150 250,170 S 280,180 300,190",
+    aiY: 55,
+    labelWithAI: { top: "2%", value: "$520K/yr" },
+    labelWithoutAI: { top: "65%", value: "$120K/yr" },
+    insight: "<span class='text-white font-bold'>Established agents</span> who adopt AI see a <span class='text-white font-bold'>4.3x income boost</span> within 2 years."
+  },
+  top: {
+    withAI: "M 0,100 C 50,95 70,85 100,60 S 130,30 160,15 S 220,5 300,2",
+    withoutAI: "M 0,60 C 50,70 100,85 150,100 S 200,120 250,140 S 280,155 300,165",
+    aiY: 20,
+    labelWithAI: { top: "1%", value: "$750K/yr" },
+    labelWithoutAI: { top: "55%", value: "$280K/yr" },
+    insight: "<span class='text-white font-bold'>Top producers</span> who don't adapt get <span class='text-white font-bold'>overtaken by AI-powered juniors</span> within 4 years."
+  }
+};
+
+let currentAgentType = 'junior';
+
+function setAgentType(type) {
+  currentAgentType = type;
+  
+  // Update toggle buttons
+  document.querySelectorAll('.agent-type-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('btn-' + type).classList.add('active');
+  
+  // Get data for this type
+  const data = graphData[type];
+  
+  // Update SVG paths with animation
+  const lineWithAI = document.getElementById('line-with-ai');
+  const lineWithoutAI = document.getElementById('line-without-ai');
+  
+  // Reset animation by removing and re-adding
+  lineWithAI.style.animation = 'none';
+  lineWithoutAI.style.animation = 'none';
+  lineWithAI.offsetHeight; // Trigger reflow
+  lineWithoutAI.offsetHeight;
+  
+  // Update paths
+  lineWithAI.setAttribute('d', data.withAI);
+  lineWithoutAI.setAttribute('d', data.withoutAI);
+  
+  // Restart animation
+  lineWithAI.style.animation = 'drawLine 1.5s ease-out forwards';
+  lineWithoutAI.style.animation = 'drawLine 1.5s ease-out forwards';
+  
+  // Update outcome labels
+  const outcomeWithAI = document.getElementById('outcome-with-ai');
+  const outcomeWithoutAI = document.getElementById('outcome-without-ai');
+  outcomeWithAI.style.top = data.labelWithAI.top;
+  outcomeWithAI.querySelector('.text-green-400').textContent = data.labelWithAI.value;
+  outcomeWithoutAI.style.top = data.labelWithoutAI.top;
+  outcomeWithoutAI.querySelector('.text-gray-400').textContent = data.labelWithoutAI.value;
+  
+  // Update insight
+  document.getElementById('graph-insight').innerHTML = '<p class="text-gray-300">' + data.insight + '</p>';
+}
+
+// Initialize graph on page load
+document.addEventListener('DOMContentLoaded', function() {
+  setAgentType('junior');
+});
+
+function initAutocomplete() {
+  const suburbInput = document.getElementById('suburb-input');
+  const searchBtn = document.getElementById('search-btn');
+  const dropdown = document.getElementById('suburb-dropdown');
+  
+  // Hide the custom dropdown since Google provides its own
+  dropdown.style.display = 'none';
+  
+  // Initialize Google Places Autocomplete
+  autocomplete = new google.maps.places.Autocomplete(suburbInput, {
+    types: ['(regions)'],
+    componentRestrictions: { country: 'au' }
+  });
+  
+  // Style the Google autocomplete dropdown
+  const pacContainer = document.querySelector('.pac-container');
+  if (pacContainer) {
+    pacContainer.style.borderRadius = '12px';
+    pacContainer.style.marginTop = '8px';
+    pacContainer.style.boxShadow = '0 10px 40px rgba(0,0,0,0.15)';
+  }
+  
+  // Handle place selection
+  autocomplete.addListener('place_changed', () => {
+    const place = autocomplete.getPlace();
+    if (place.formatted_address) {
+      selectedPlace = place;
+    }
+  });
+  
+  // Search button click
+  searchBtn.addEventListener('click', () => { 
+    const val = suburbInput.value;
+    window.location.href = `demo.html?query=${encodeURIComponent(val || 'start')}`;
+  });
+  
+  // Initialize typewriter
+  initTypewriter(suburbInput);
+}
+
+function initTypewriter(suburbInput) {
+
+  // --- TYPEWRITER EFFECT ---
+  const phrases = ["Bondi, NSW", "Toorak, VIC", "Broadbeach, QLD"];
+  let phraseIdx = 0;
+  let charIdx = 0;
+  let isDeleting = false;
+  let typewriterActive = true;
+
+  function type() {
+    if (!typewriterActive) return;
+    const currentPhrase = phrases[phraseIdx];
+    
+    if (isDeleting) {
+      suburbInput.placeholder = currentPhrase.substring(0, charIdx - 1);
+      charIdx--;
+    } else {
+      suburbInput.placeholder = currentPhrase.substring(0, charIdx + 1);
+      charIdx++;
+    }
+
+    let typeSpeed = isDeleting ? 50 : 100;
+
+    if (!isDeleting && charIdx === currentPhrase.length) {
+      isDeleting = true;
+      typeSpeed = 2000;
+    } else if (isDeleting && charIdx === 0) {
+      isDeleting = false;
+      phraseIdx = (phraseIdx + 1) % phrases.length;
+      typeSpeed = 500;
+    }
+
+    setTimeout(type, typeSpeed);
+  }
+
+  // Stop typewriter when user interacts
+  suburbInput.addEventListener('focus', () => {
+    typewriterActive = false;
+    suburbInput.placeholder = "Enter your suburb...";
+  });
+
+  // Restart typewriter if input is empty on blur
+  suburbInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (suburbInput.value === "") {
+        typewriterActive = true;
+        charIdx = 0;
+        isDeleting = false;
+        type();
+      }
+    }, 200);
+  });
+
+  // Start typewriter
+  type();
+}
+
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 50) navbar.classList.add('bg-gray-900/95', 'backdrop-blur-md', 'shadow-lg');
+  else navbar.classList.remove('bg-gray-900/95', 'backdrop-blur-md', 'shadow-lg');
+});
+
+// Smooth scrolling for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', function(e) { 
+  e.preventDefault(); 
+  document.querySelector(this.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' }); 
+}));
+
+// Counter animation for agent count
+const counterEl = document.getElementById('agent-counter');
+let counterAnimated = false;
+
+function animateCounter() {
+  if (counterAnimated) return;
+  counterAnimated = true;
+  
+  const target = 1200;
+  const duration = 2000;
+  const startTime = performance.now();
+  
+  function updateCounter(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Ease out cubic for smooth deceleration
+    const easeOut = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(easeOut * target);
+    
+    counterEl.textContent = current.toLocaleString();
+    
+    if (progress < 1) {
+      requestAnimationFrame(updateCounter);
+    } else {
+      counterEl.textContent = '1,200';
+    }
+  }
+  
+  requestAnimationFrame(updateCounter);
+}
+
+// Trigger when section is visible
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      animateCounter();
+      counterObserver.disconnect();
+    }
+  });
+}, { threshold: 0.5 });
+
+if (counterEl) counterObserver.observe(counterEl);
+
+// Testimonial Slider
+const testimonialTrack = document.getElementById('testimonial-track');
+const prevBtn = document.getElementById('testimonial-prev');
+const nextBtn = document.getElementById('testimonial-next');
+let testimonialPosition = 0;
+const cardWidth = 420; // card width + gap
+
+if (testimonialTrack && prevBtn && nextBtn) {
+  nextBtn.addEventListener('click', () => {
+    const maxScroll = testimonialTrack.scrollWidth - window.innerWidth;
+    testimonialPosition = Math.min(testimonialPosition + cardWidth, maxScroll);
+    testimonialTrack.style.transform = `translateX(-${testimonialPosition}px)`;
+  });
+  
+  prevBtn.addEventListener('click', () => {
+    testimonialPosition = Math.max(testimonialPosition - cardWidth, 0);
+    testimonialTrack.style.transform = `translateX(-${testimonialPosition}px)`;
+  });
+}
+</script>
+</body>
+</html>
