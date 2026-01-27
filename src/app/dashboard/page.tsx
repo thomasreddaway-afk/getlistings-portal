@@ -136,7 +136,12 @@ function formatTimeAgo(dateStr: string): string {
 
 function formatValue(salePrice?: string): string {
   if (!salePrice) return 'Est. value unknown';
-  return `Est. ${salePrice}`;
+  // If already formatted with $, just return with Est. prefix
+  if (salePrice.includes('$')) return `Est. ${salePrice}`;
+  // Parse number and format with $ and commas
+  const numValue = parseFloat(salePrice.replace(/[^0-9.]/g, ''));
+  if (isNaN(numValue)) return 'Est. value unknown';
+  return `Est. $${numValue.toLocaleString()}`;
 }
 
 function calculateCommission(salePrice?: string): string {
@@ -570,7 +575,7 @@ export default function DashboardPage() {
                         {listing.agentName && ` • Listed with ${listing.agentName}`}
                       </p>
                       <div className="flex items-center mt-2">
-                        <span className="text-xs text-gray-400">{listing.salePrice || 'Price TBA'}</span>
+                        <span className="text-xs text-gray-400">{listing.salePrice ? (listing.salePrice.includes('$') ? listing.salePrice : `$${parseFloat(listing.salePrice).toLocaleString()}`) : 'Price TBA'}</span>
                       </div>
                     </Link>
                   ))

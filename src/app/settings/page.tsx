@@ -24,6 +24,23 @@ const defaultPipelineStages: PipelineStage[] = [
   { id: 'lost', name: 'Lost', color: '#EF4444', order: 6 },
 ];
 
+// Format phone number for display (e.g., 61431584031 -> +61 431 584 031)
+const formatPhoneNumber = (phone: string): string => {
+  if (!phone) return '';
+  // Remove any existing formatting
+  const digits = phone.replace(/\D/g, '');
+  // Australian number format
+  if (digits.startsWith('61') && digits.length === 11) {
+    return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+  }
+  // If starts with 0, assume Australian local format
+  if (digits.startsWith('0') && digits.length === 10) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  // Default: just add spaces every 3-4 digits
+  return phone;
+};
+
 type SettingsPanel = 
   | null 
   | 'persona' 
@@ -34,8 +51,6 @@ type SettingsPanel =
   | 'suburbs'
   | 'subscription'
   | 'pipeline'
-  | 'scripts'
-  | 'templates'
   | 'api';
 
 export default function SettingsPage() {
@@ -87,7 +102,7 @@ export default function SettingsPage() {
         { 
           id: 'security', 
           label: 'Security', 
-          description: 'Password, two-factor authentication, and session management.',
+          description: 'View your login method and account security.',
           iconBg: 'bg-green-100',
           iconColor: 'text-green-600',
           icon: (
@@ -138,19 +153,6 @@ export default function SettingsPage() {
             </svg>
           ),
         },
-        { 
-          id: 'leaderboard', 
-          label: 'Leaderboard', 
-          description: 'View rankings and compete with other agents.',
-          iconBg: 'bg-rose-100',
-          iconColor: 'text-rose-600',
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-          ),
-          href: '/leaderboard',
-        },
       ],
     },
     {
@@ -167,60 +169,6 @@ export default function SettingsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
             </svg>
           ),
-        },
-        { 
-          id: 'scripts', 
-          label: 'Call scripts', 
-          description: 'Manage your phone call scripts and templates.',
-          iconBg: 'bg-cyan-100',
-          iconColor: 'text-cyan-600',
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-          ),
-        },
-        { 
-          id: 'templates', 
-          label: 'SMS & email templates', 
-          description: 'Create and manage your messaging templates.',
-          iconBg: 'bg-teal-100',
-          iconColor: 'text-teal-600',
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
-          ),
-        },
-        { 
-          id: 'api', 
-          label: 'API connection', 
-          description: 'Connect to prop.deals API for live data.',
-          iconBg: 'bg-slate-800',
-          iconColor: 'text-white',
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-          ),
-        },
-      ],
-    },
-    {
-      title: 'Admin',
-      items: [
-        { 
-          id: 'reliability', 
-          label: 'Lead reliability', 
-          description: 'Review and improve lead data quality.',
-          iconBg: 'bg-amber-100',
-          iconColor: 'text-amber-600',
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          ),
-          href: '/reliability',
         },
       ],
     },
@@ -278,6 +226,36 @@ export default function SettingsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
           ),
+        },
+      ],
+    },
+    {
+      title: 'Admin',
+      items: [
+        { 
+          id: 'api', 
+          label: 'API connection', 
+          description: 'Connect to prop.deals API for live data.',
+          iconBg: 'bg-slate-800',
+          iconColor: 'text-white',
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+          ),
+        },
+        { 
+          id: 'reliability', 
+          label: 'Lead reliability', 
+          description: 'Review and improve lead data quality.',
+          iconBg: 'bg-amber-100',
+          iconColor: 'text-amber-600',
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          ),
+          href: '/reliability',
         },
       ],
     },
@@ -387,6 +365,11 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
   const [draggedStageIndex, setDraggedStageIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   
+  // Suburbs state
+  const [subscribedSuburbs, setSubscribedSuburbs] = useState<string[]>([]);
+  const [maxSuburbs, setMaxSuburbs] = useState(4);
+  const [suburbPlanName, setSuburbPlanName] = useState('4 Suburb Plan');
+  
   // Load saved branding on mount
   useEffect(() => {
     const savedBranding = localStorage.getItem('agentBranding');
@@ -410,10 +393,59 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     }
   }, []);
 
+  // Load suburbs from API
+  useEffect(() => {
+    if (panel !== 'suburbs') return;
+    
+    const fetchSuburbs = async () => {
+      try {
+        const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+        if (token) {
+          const response = await fetch(`${API_URL}/user/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const profile = await response.json();
+            // Get suburbs from subscription object
+            if (profile.subscription) {
+              const sub = profile.subscription;
+              const suburbs: string[] = [];
+              if (sub.suburb1) suburbs.push(sub.suburb1);
+              if (sub.suburb2) suburbs.push(sub.suburb2);
+              if (sub.suburb3) suburbs.push(sub.suburb3);
+              if (sub.suburb4) suburbs.push(sub.suburb4);
+              if (sub.suburb5) suburbs.push(sub.suburb5);
+              if (sub.suburb6) suburbs.push(sub.suburb6);
+              setSubscribedSuburbs(suburbs);
+              
+              // Set plan name based on subscription type
+              const planNames: Record<string, string> = {
+                'one': '1 Suburb Plan',
+                'two': '2 Suburb Plan',
+                'four': '4 Suburb Plan',
+                'six': '6 Suburb Plan',
+              };
+              setSuburbPlanName(planNames[sub.subscriptionType] || `${suburbs.length} Suburb Plan`);
+              setMaxSuburbs(suburbs.length);
+            } else if (profile.interestedSuburbs && profile.interestedSuburbs.length > 0) {
+              setSubscribedSuburbs(profile.interestedSuburbs);
+              setMaxSuburbs(profile.interestedSuburbs.length);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load suburbs:', err);
+      }
+    };
+    
+    fetchSuburbs();
+  }, [panel]);
+
   // Load personal details from localStorage and API
   useEffect(() => {
     console.log('Personal details useEffect running, panel:', panel);
-    if (panel !== 'personal') return;
+    // For security panel, we need phone number; for personal panel, we need all details
+    if (panel !== 'personal' && panel !== 'security') return;
     
     // Load from localStorage immediately
     const savedUser = localStorage.getItem('propdeals_user');
@@ -426,7 +458,7 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
         setFirstName(user.firstName || '');
         setLastName(user.lastName || '');
         setEmail(user.email || '');
-        setPhone(user.phone || '');
+        setPhone(user.phone || user.phoneNumber || '');
         setAgency(user.agency || user.agencyName || '');
         setPosition(user.position || user.role || '');
       } catch (e) {
@@ -440,7 +472,7 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
         const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
         console.log('Token exists:', !!token);
         if (token) {
-          const response = await fetch(`${API_URL}/profile`, {
+          const response = await fetch(`${API_URL}/user/me`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (response.ok) {
@@ -657,8 +689,6 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     suburbs: 'Suburb Subscription',
     subscription: 'Billing & Subscription',
     pipeline: 'Pipeline Stages',
-    scripts: 'Call Scripts',
-    templates: 'SMS & Email Templates',
     api: 'API Connection',
   };
 
@@ -1106,26 +1136,47 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
         return (
           <div className="space-y-6">
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Change Password</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-500 mb-1">Current Password</label>
-                  <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-500 mb-1">New Password</label>
-                  <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-500 mb-1">Confirm New Password</label>
-                  <input type="password" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-                </div>
+              <h3 className="font-semibold text-gray-900 mb-4">Your Login Method</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                You log in to Get Listings using your mobile phone number. Each time you sign in, 
+                we send a one-time verification code via SMS to confirm it's you.
+              </p>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <label className="block text-sm text-gray-500 mb-1">Registered Phone Number</label>
+                <p className="text-lg font-semibold text-gray-900">{phone ? formatPhoneNumber(phone) : 'Loading...'}</p>
               </div>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Two-Factor Authentication</h3>
-              <p className="text-sm text-gray-500 mb-4">Add an extra layer of security to your account</p>
-              <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-700">Enable 2FA</button>
+              <h3 className="font-semibold text-gray-900 mb-2">Need to Change Your Phone Number?</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                If you've changed your phone number and need to update your login details, 
+                please contact our support team and we'll help you get sorted.
+              </p>
+              <a 
+                href="https://m.me/GetListings" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-700 font-medium"
+              >
+                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.908 1.438 5.503 3.686 7.2V22l3.382-1.853c.903.25 1.861.386 2.932.386 5.523 0 10-4.145 10-9.243S17.523 2 12 2z"/>
+                </svg>
+                Contact Support
+              </a>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Why phone-based login?</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Phone verification is more secure than passwords - there's nothing to remember or steal. 
+                    Your phone number is your identity, and the SMS code proves you have access to it.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -1211,17 +1262,18 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Your Subscribed Suburbs</h3>
-                <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">4 Suburb Plan</span>
+                <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">{suburbPlanName}</span>
               </div>
               <div className="flex flex-wrap gap-2 mb-4">
-                {['Paddington NSW', 'Woollahra NSW', 'Double Bay NSW', 'Darling Point NSW'].map((suburb) => (
+                {subscribedSuburbs.length > 0 ? subscribedSuburbs.map((suburb) => (
                   <span key={suburb} className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">
                     {suburb}
-                    <button className="ml-2 text-gray-400 hover:text-red-500">×</button>
                   </span>
-                ))}
+                )) : (
+                  <span className="text-gray-500">Loading...</span>
+                )}
               </div>
-              <p className="text-sm text-gray-500">Your current plan allows up to <strong>4</strong> suburbs.</p>
+              <p className="text-sm text-gray-500">Your current plan allows up to <strong>{maxSuburbs}</strong> suburbs.</p>
             </div>
 
             {/* Upgrade CTA */}
@@ -1451,9 +1503,11 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
           </button>
           <h1 className="text-xl font-bold text-gray-900">{panelTitles[panel!] || 'Settings'}</h1>
         </div>
-        <button onClick={handleSave} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-700 font-medium">
-          Save Changes
-        </button>
+        {panel !== 'security' && (
+          <button onClick={handleSave} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-red-700 font-medium">
+            Save Changes
+          </button>
+        )}
       </div>
 
       {/* Content */}
