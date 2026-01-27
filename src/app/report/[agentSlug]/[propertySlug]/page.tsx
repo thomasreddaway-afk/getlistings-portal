@@ -610,7 +610,7 @@ export default function AppraisalCardPage() {
                   loading="lazy"
                   allowFullScreen
                   referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://www.google.com/maps/embed/v1/place?key=GOOGLE_MAPS_KEY_REMOVED&q=${encodeURIComponent(fullAddress)}`}
+                  src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(fullAddress)}`}
                 />
               </div>
             </div>
