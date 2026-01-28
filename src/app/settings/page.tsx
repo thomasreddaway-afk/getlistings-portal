@@ -1,8 +1,8 @@
 'use client';
 
 import { DemoLayout } from '@/components/layout';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
@@ -48,11 +48,9 @@ type SettingsPanel =
   | 'notifications' 
   | 'security' 
   | 'timezone'
-  | 'suburbs'
   | 'subscription'
   | 'pipeline'
   | 'testimonials'
-  | 'territory'
   | 'api';
 
 interface Testimonial {
@@ -65,6 +63,23 @@ interface Testimonial {
   source?: string;
   isTopFive: boolean;
   order?: number;
+}
+
+// Component to handle URL search params (needs Suspense boundary)
+function SettingsURLHandler({ setActivePanel }: { setActivePanel: (panel: SettingsPanel) => void }) {
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      const validTabs: SettingsPanel[] = ['persona', 'personal', 'notifications', 'security', 'timezone', 'subscription', 'pipeline', 'testimonials', 'api'];
+      if (validTabs.includes(tabParam as SettingsPanel)) {
+        setActivePanel(tabParam as SettingsPanel);
+      }
+    }
+  }, [searchParams, setActivePanel]);
+  
+  return null;
 }
 
 export default function SettingsPage() {
@@ -143,34 +158,9 @@ export default function SettingsPage() {
       title: 'Account settings',
       items: [
         { 
-          id: 'suburbs', 
-          label: 'Suburb subscription', 
-          description: "Manage suburbs you're tracking for new seller leads.",
-          iconBg: 'bg-purple-100',
-          iconColor: 'text-purple-600',
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          ),
-        },
-        { 
-          id: 'territory', 
-          label: 'Territory expansion', 
-          description: 'Unlock leads in nearby suburbs to grow your coverage area.',
-          iconBg: 'bg-gradient-to-br from-amber-100 to-orange-100',
-          iconColor: 'text-amber-600',
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
-          ),
-        },
-        { 
           id: 'subscription', 
           label: 'Billing & subscription', 
-          description: 'Manage your plan, payment methods, and invoices.',
+          description: 'Manage your plan, payment methods, suburbs, and invoices.',
           iconBg: 'bg-amber-100',
           iconColor: 'text-amber-600',
           icon: (
@@ -320,6 +310,11 @@ export default function SettingsPage() {
 
   return (
     <DemoLayout currentPage="settings">
+      {/* Handle URL query params for deep linking (e.g., /settings?tab=subscription) */}
+      <Suspense fallback={null}>
+        <SettingsURLHandler setActivePanel={setActivePanel} />
+      </Suspense>
+      
       <div className="flex-1 overflow-auto bg-white">
         {/* Header */}
         <div className="border-b border-gray-200 px-6 py-4">
@@ -454,9 +449,9 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     // Note: localStorage.removeItem is called explicitly when clearing
   }, [testimonials]);
 
-  // Load suburbs from API
+  // Load suburbs from API (for subscription panel)
   useEffect(() => {
-    if (panel !== 'suburbs') return;
+    if (panel !== 'subscription') return;
     
     const fetchSuburbs = async () => {
       try {
@@ -751,7 +746,6 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
     subscription: 'Billing & Subscription',
     pipeline: 'Pipeline Stages',
     testimonials: 'Testimonial Database',
-    territory: 'Territory Expansion',
     api: 'API Connection',
   };
 
@@ -1466,10 +1460,11 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
           </div>
         );
 
+      /* Suburbs panel - consolidated into subscription panel above
       case 'suburbs':
         return (
           <div className="space-y-6">
-            {/* Current Subscription Status */}
+            {/* Current Subscription Status *}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Your Subscribed Suburbs</h3>
@@ -1487,7 +1482,7 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
               <p className="text-sm text-gray-500">Your current plan allows up to <strong>{maxSuburbs}</strong> suburbs.</p>
             </div>
 
-            {/* Upgrade CTA */}
+            {/* Upgrade CTA *}
             <div className="bg-gradient-to-br from-primary/5 to-amber-50 border border-primary/20 rounded-xl p-6">
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-primary to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -1505,7 +1500,7 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
               </div>
             </div>
 
-            {/* Benefits */}
+            {/* Benefits *}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h4 className="font-semibold text-gray-900 mb-4">What you get with more suburbs</h4>
               <div className="grid md:grid-cols-2 gap-4">
@@ -1529,10 +1524,46 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
             </div>
           </div>
         );
+      */
 
       case 'subscription':
         return (
           <div className="space-y-6">
+            {/* Your Subscribed Suburbs */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Your Subscribed Suburbs</h3>
+                    <p className="text-sm text-gray-500">Active suburbs you&apos;re tracking for seller leads</p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full flex items-center space-x-1">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span>{subscribedSuburbs.length} Active</span>
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {subscribedSuburbs.length > 0 ? subscribedSuburbs.map((suburb) => (
+                  <span key={suburb} className="inline-flex items-center px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm border border-green-200">
+                    <svg className="w-4 h-4 mr-1.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {suburb}
+                  </span>
+                )) : (
+                  <span className="text-gray-500">No suburbs subscribed yet</span>
+                )}
+              </div>
+
+            </div>
+
             {/* Current Plan Status */}
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 text-white">
               <div className="flex items-center justify-between">
@@ -1544,81 +1575,213 @@ function SettingsDetailModal({ panel, onClose }: { panel: SettingsPanel; onClose
                   </div>
                   <div>
                     <p className="text-sm text-green-100">Your Current Plan</p>
-                    <p className="text-2xl font-bold">Professional</p>
+                    <p className="text-2xl font-bold">{suburbPlanName || 'Professional'}</p>
                     <p className="text-sm text-green-100 mt-1">Billed monthly • Next billing: Feb 9, 2026</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-4xl font-bold">$349</p>
+                  <p className="text-4xl font-bold">$99</p>
                   <p className="text-sm text-green-100">/month</p>
                 </div>
               </div>
-
-              {/* Usage Stats */}
-              <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/20">
-                {[
-                  { label: 'Suburbs', used: 4, total: 5 },
-                  { label: 'Lead Unlocks', used: 52, total: 75 },
-                  { label: 'SMS Credits', used: 67, total: 100 },
-                  { label: 'Email Credits', used: 312, total: 500 },
-                ].map((stat) => (
-                  <div key={stat.label}>
-                    <p className="text-sm text-green-100">{stat.label}</p>
-                    <p className="text-xl font-bold">{stat.used} <span className="text-sm font-normal text-green-200">/ {stat.total}</span></p>
-                    <div className="w-full bg-white/20 rounded-full h-1.5 mt-1">
-                      <div className="bg-white rounded-full h-1.5" style={{ width: `${(stat.used / stat.total) * 100}%` }}></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
 
-            {/* ROI Callout */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">You&apos;ve won 3 listings this quarter using Get Listings</p>
-                  <p className="text-sm text-gray-600">That&apos;s approximately <strong>$67,500</strong> in commission vs <strong>$1,047</strong> subscription cost. <span className="text-green-600 font-medium">64x ROI</span></p>
+            {/* Pricing Table */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-gray-900">Available Plans</h2>
+              <p className="text-sm text-gray-500">Compare all plans and choose the one that fits your needs.</p>
+              
+              <div className="overflow-x-auto">
+                <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-lg">
+                  <table className="w-full bg-white text-sm">
+                    <thead>
+                      <tr className="bg-gray-900 text-white">
+                        <th className="text-left p-4">
+                          <div className="font-bold">Features</div>
+                        </th>
+                        <th className="p-4 text-center">
+                          <div className="font-bold">Minimum</div>
+                          <div className="text-lg font-black mt-1">$99<span className="text-xs font-normal">/mo</span></div>
+                          <div className="text-xs text-gray-400 mt-0.5">New Agents</div>
+                        </th>
+                        <th className="p-4 text-center bg-primary">
+                          <div className="font-bold">Growth</div>
+                          <div className="text-lg font-black mt-1">$2,497<span className="text-xs font-normal">/mo</span></div>
+                          <div className="text-xs text-red-200 mt-0.5">Established Agents</div>
+                        </th>
+                        <th className="p-4 text-center">
+                          <div className="font-bold">Pro</div>
+                          <div className="text-lg font-black mt-1">$10,000<span className="text-xs font-normal">/mo</span></div>
+                          <div className="text-xs text-gray-400 mt-0.5">Top Producers</div>
+                        </th>
+                        <th className="p-4 text-center bg-gradient-to-b from-gray-800 to-gray-900">
+                          <div className="font-bold">Agency</div>
+                          <div className="text-lg font-black mt-1">$50,000<span className="text-xs font-normal">/mo</span></div>
+                          <div className="text-xs text-gray-400 mt-0.5">Teams & Offices</div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {/* Seller Leads Section */}
+                      <tr className="bg-slate-50 border-b-2 border-slate-200">
+                        <td colSpan={5} className="p-3">
+                          <div className="font-semibold text-slate-600 text-xs uppercase tracking-wider">🏡 Seller Leads</div>
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3">
+                          <div className="font-medium text-gray-900">Exclusive Valuation Requests</div>
+                          <div className="text-gray-500 text-xs mt-0.5">High intent seller leads with phone, email & address</div>
+                        </td>
+                        <td className="p-3 text-center text-gray-300">—</td>
+                        <td className="p-3 text-center bg-red-50 font-medium">10</td>
+                        <td className="p-3 text-center font-medium">75</td>
+                        <td className="p-3 text-center bg-gray-50 font-medium">500</td>
+                      </tr>
+
+                      {/* Software Section */}
+                      <tr className="bg-slate-50 border-b-2 border-slate-200">
+                        <td colSpan={5} className="p-3">
+                          <div className="font-semibold text-slate-600 text-xs uppercase tracking-wider">🖥️ Lead Generation Software</div>
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3">
+                          <div className="font-medium text-gray-900">AI Property Insights</div>
+                          <div className="text-gray-500 text-xs mt-0.5">FSBO • Valuations • Garage Sales • Permits</div>
+                        </td>
+                        <td className="p-3 text-center text-xs">50,000 homes</td>
+                        <td className="p-3 text-center bg-red-50 text-xs">125,000 homes</td>
+                        <td className="p-3 text-center text-xs">500,000 homes</td>
+                        <td className="p-3 text-center bg-gray-50 text-xs">1,000,000 homes</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Suburb Subscription</td>
+                        <td className="p-3 text-center">4 suburbs</td>
+                        <td className="p-3 text-center bg-red-50">5 suburbs</td>
+                        <td className="p-3 text-center">20 suburbs</td>
+                        <td className="p-3 text-center bg-gray-50">100 suburbs</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Team Seats</td>
+                        <td className="p-3 text-center">1</td>
+                        <td className="p-3 text-center bg-red-50">3</td>
+                        <td className="p-3 text-center">8</td>
+                        <td className="p-3 text-center bg-gray-50">30</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Expired Listing Alerts</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-red-50 text-green-500">✓</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Pipeline CRM</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-red-50 text-green-500">✓</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Mobile App Access</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-red-50 text-green-500">✓</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">AI Content Creation</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-red-50 text-green-500">✓</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3">
+                          <div className="font-medium text-gray-900">AI Listing Tools</div>
+                          <div className="text-gray-500 text-xs mt-0.5">Scripts • Marketing • Price Prediction</div>
+                        </td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-red-50 text-green-500">✓</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Instant Appraisal Reports</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-red-50 text-green-500">✓</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+
+                      {/* Support Section */}
+                      <tr className="bg-slate-50 border-b-2 border-slate-200">
+                        <td colSpan={5} className="p-3">
+                          <div className="font-semibold text-slate-600 text-xs uppercase tracking-wider">🎯 Support & Service</div>
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Support Response Time</td>
+                        <td className="p-3 text-center text-xs">&lt;24 hours</td>
+                        <td className="p-3 text-center bg-red-50 text-xs">&lt;4 hours</td>
+                        <td className="p-3 text-center text-xs">&lt;60 minutes</td>
+                        <td className="p-3 text-center bg-gray-50 text-xs">&lt;10 minutes</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Dedicated Account Manager</td>
+                        <td className="p-3 text-center text-gray-300">—</td>
+                        <td className="p-3 text-center bg-red-50 text-green-500">✓</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">Custom Integrations</td>
+                        <td className="p-3 text-center text-gray-300">—</td>
+                        <td className="p-3 text-center bg-red-50 text-gray-300">—</td>
+                        <td className="p-3 text-center text-green-500">✓</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">White-Label Options</td>
+                        <td className="p-3 text-center text-gray-300">—</td>
+                        <td className="p-3 text-center bg-red-50 text-gray-300">—</td>
+                        <td className="p-3 text-center text-gray-300">—</td>
+                        <td className="p-3 text-center bg-gray-50 text-green-500">✓</td>
+                      </tr>
+
+                      {/* CTA Row */}
+                      <tr className="bg-gray-50">
+                        <td className="p-4"></td>
+                        <td className="p-4 text-center">
+                          <button className="px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition">
+                            Start Free Trial
+                          </button>
+                        </td>
+                        <td className="p-4 text-center bg-red-50">
+                          <button className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition">
+                            Book Onboarding
+                          </button>
+                        </td>
+                        <td className="p-4 text-center">
+                          <button className="px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition">
+                            Contact Sales
+                          </button>
+                        </td>
+                        <td className="p-4 text-center">
+                          <button className="px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition">
+                            Talk to Us
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            </div>
-
-            {/* Plans Grid */}
-            <h2 className="text-xl font-bold text-gray-900">Choose Your Plan</h2>
-            <div className="grid grid-cols-3 gap-5">
-              {[
-                { name: 'Starter', price: 149, suburbs: 2, leads: 50, current: false },
-                { name: 'Professional', price: 349, suburbs: 5, leads: 'Unlimited', current: true },
-                { name: 'Growth', price: 599, suburbs: 12, leads: 'Unlimited', current: false, recommended: true },
-              ].map((plan) => (
-                <div key={plan.name} className={`bg-white rounded-2xl p-6 relative ${plan.current ? 'border-2 border-green-500 shadow-lg' : 'border border-gray-200'}`}>
-                  {plan.current && <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">CURRENT PLAN</div>}
-                  {plan.recommended && <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full">RECOMMENDED</div>}
-                  <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-                  <div className="my-4">
-                    <span className="text-3xl font-bold text-gray-900">${plan.price}</span>
-                    <span className="text-gray-500">/month</span>
-                  </div>
-                  <ul className="space-y-2 text-sm mb-6">
-                    <li className="flex items-center space-x-2">
-                      <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                      <span><strong>{plan.suburbs}</strong> suburbs</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                      <span><strong>{plan.leads}</strong> Seller Scores</span>
-                    </li>
-                  </ul>
-                  <button className={`w-full py-3 rounded-xl font-medium ${plan.current ? 'bg-green-100 text-green-700 cursor-default' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-                    {plan.current ? 'Current Plan' : 'Select'}
-                  </button>
-                </div>
-              ))}
+              
+              <p className="text-center text-gray-500 text-xs mt-4">
+                Minimum plan: Cancel anytime • Growth, Pro & Agency: 3-month minimum commitment • Prices exclude GST
+              </p>
             </div>
           </div>
         );
@@ -2222,244 +2385,7 @@ Professional and dedicated agent..."
           </div>
         );
 
-      case 'territory':
-        return (
-          <div className="space-y-6">
-            {/* Header Info */}
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-amber-900">Expand Your Territory</h4>
-                  <p className="text-sm text-amber-700 mt-1">Get access to high-potential leads in suburbs adjacent to your current coverage area.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Current Coverage */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Your Current Coverage</h3>
-                <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full flex items-center space-x-1">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  <span>{subscribedSuburbs.length} Active</span>
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {subscribedSuburbs.length > 0 ? subscribedSuburbs.map((suburb) => (
-                  <span key={suburb} className="inline-flex items-center px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm border border-green-200">
-                    <svg className="w-4 h-4 mr-1.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {suburb}
-                  </span>
-                )) : (
-                  <span className="text-gray-500">Loading your suburbs...</span>
-                )}
-              </div>
-            </div>
-
-            {/* Nearby Suburbs - Locked */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Nearby Suburbs Available</h3>
-                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full flex items-center space-x-1">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <span>Locked</span>
-                </span>
-              </div>
-              <p className="text-sm text-gray-500 mb-4">These suburbs are adjacent to your current coverage and have seller leads waiting.</p>
-              
-              {/* Blurred/locked nearby suburbs */}
-              <div className="grid grid-cols-2 gap-3">
-                {['Paddington', 'Red Hill', 'Kelvin Grove', 'Newmarket', 'Bardon', 'Milton'].map((suburb) => (
-                  <div key={suburb} className="relative p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] rounded-xl flex items-center justify-center z-10">
-                      <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">{suburb}</p>
-                        <p className="text-xs text-gray-500">Near your area</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400">? leads</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Upgrade CTA */}
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold">Expand Your Territory</h3>
-                  <p className="text-amber-100 mt-1">Get access to high-potential leads in suburbs near your current coverage</p>
-                  <div className="flex items-center space-x-4 mt-3">
-                    <div className="flex items-center space-x-2">
-                      <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-sm">Instant access</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-sm">Full contact details</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <svg className="w-5 h-5 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-sm">AI insights included</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-amber-200 text-sm">Starting from</p>
-                  <p className="text-3xl font-bold">$49<span className="text-lg font-normal">/suburb/mo</span></p>
-                  <button className="mt-2 px-6 py-2 bg-white text-amber-600 rounded-lg text-sm font-semibold hover:bg-amber-50 transition-colors">
-                    View Packages
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Bundle Packages */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Single Suburb */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-bold text-gray-900">Single Suburb</h4>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">Basic</span>
-                </div>
-                <div className="mb-4">
-                  <span className="text-3xl font-bold text-gray-900">$49</span>
-                  <span className="text-gray-500">/mo</span>
-                </div>
-                <ul className="space-y-2 text-sm text-gray-600 mb-4">
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>1 additional suburb</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Full lead access</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>AI insights</span>
-                  </li>
-                </ul>
-                <button className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
-                  Select Suburb
-                </button>
-              </div>
-
-              {/* 3 Suburb Bundle */}
-              <div className="bg-white rounded-xl border-2 border-blue-200 p-5 hover:shadow-lg transition-shadow relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">Popular</span>
-                </div>
-                <div className="flex items-center justify-between mb-3 mt-2">
-                  <h4 className="font-bold text-gray-900">3 Suburb Bundle</h4>
-                </div>
-                <div className="mb-4">
-                  <span className="text-3xl font-bold text-gray-900">$79</span>
-                  <span className="text-gray-500">/mo</span>
-                  <span className="ml-2 text-sm text-green-600 font-medium">Save $68</span>
-                </div>
-                <ul className="space-y-2 text-sm text-gray-600 mb-4">
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>3 additional suburbs</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Full lead access</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>AI insights + priority support</span>
-                  </li>
-                </ul>
-                <button className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-                  Choose 3 Suburbs
-                </button>
-              </div>
-
-              {/* 6 Suburb Bundle */}
-              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border-2 border-amber-300 p-5 hover:shadow-lg transition-shadow relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">BEST VALUE</span>
-                </div>
-                <div className="flex items-center justify-between mb-3 mt-2">
-                  <h4 className="font-bold text-gray-900">6 Suburb Bundle</h4>
-                  <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded">Pro</span>
-                </div>
-                <div className="mb-4">
-                  <span className="text-3xl font-bold text-gray-900">$99</span>
-                  <span className="text-gray-500">/mo</span>
-                  <span className="ml-2 text-sm text-green-600 font-medium">Save $195</span>
-                </div>
-                <ul className="space-y-2 text-sm text-gray-600 mb-4">
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span><strong>All 6 nearby suburbs</strong></span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Unlimited lead access</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>AI insights + priority support</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Exclusive territory protection</span>
-                  </li>
-                </ul>
-                <button className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-sm font-bold hover:from-amber-600 hover:to-orange-600 transition-colors shadow-lg shadow-amber-500/25">
-                  Get All 6 Suburbs
-                </button>
-              </div>
-            </div>
-          </div>
-        );
+      /* Territory expansion case removed - functionality consolidated into Billing & Subscription */
 
       default:
         return (

@@ -5,7 +5,8 @@ import { DemoLayout } from '@/components/layout/DemoLayout';
 import { 
   Sparkles, Download, Lock, Crown, Check, ChevronRight, 
   Image as ImageIcon, Wand2, Palette, Share2, 
-  X, Home, DollarSign, Key, Calendar, MessageSquareQuote, Star, Quote
+  X, Home, DollarSign, Key, Calendar, MessageSquareQuote, Star, Quote,
+  HelpCircle
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
@@ -154,6 +155,8 @@ export default function MarketingPage() {
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [helpViewMode, setHelpViewMode] = useState<'quick' | 'detailed'>('quick');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -769,6 +772,13 @@ export default function MarketingPage() {
                     <Crown className="w-4 h-4" />
                     <span className="text-sm font-medium">{premiumCount} Premium Templates</span>
                   </div>
+                  <button
+                    onClick={() => setShowHelpModal(true)}
+                    className="flex items-center space-x-2 bg-white text-primary px-4 py-2 rounded-lg hover:bg-white/90 transition-colors shadow-lg"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    <span className="text-sm font-semibold">How To Use</span>
+                  </button>
                 </div>
               </div>
               <div className="hidden lg:block">
@@ -1417,6 +1427,164 @@ export default function MarketingPage() {
           {/* Hidden Canvas for Testimonial Image Generation */}
           <canvas ref={testimonialCanvasRef} style={{ display: 'none' }} />
         </>
+        )}
+
+        {/* How To Use Help Modal */}
+        {showHelpModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-red-600 rounded-xl flex items-center justify-center">
+                    <HelpCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">How To Use</h2>
+                </div>
+                <button 
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Quick / Detailed Toggle */}
+              <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+                <button
+                  onClick={() => setHelpViewMode('quick')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                    helpViewMode === 'quick'
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  ⚡ Quick Guide
+                </button>
+                <button
+                  onClick={() => setHelpViewMode('detailed')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                    helpViewMode === 'detailed'
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  📖 Detailed Guide
+                </button>
+              </div>
+
+              {/* Quick Guide View */}
+              {helpViewMode === 'quick' && (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-primary/10 to-red-50 rounded-xl p-5">
+                    <h3 className="font-bold text-gray-900 mb-3 text-lg">4 Simple Steps:</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-3">
+                        <span className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                        <span className="text-gray-700 font-medium">Pick Property or Testimonial tab</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                        <span className="text-gray-700 font-medium">Click a template design you like</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                        <span className="text-gray-700 font-medium">Select your listing or review</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">4</span>
+                        <span className="text-gray-700 font-medium">Generate → Download → Share!</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+                      <Crown className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+                      <p className="text-xs text-amber-800"><strong>Gold = Premium</strong></p>
+                    </div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                      <Sparkles className="w-5 h-5 text-green-500 mx-auto mb-1" />
+                      <p className="text-xs text-green-800"><strong>White = Free</strong></p>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-500 text-sm text-center">
+                    That's it! Click "Detailed Guide" for more info.
+                  </p>
+                </div>
+              )}
+
+              {/* Detailed Guide View */}
+              {helpViewMode === 'detailed' && (
+                <div className="space-y-5 max-h-[400px] overflow-y-auto pr-2">
+                  {/* Step 1 */}
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-lg">
+                      1
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg">Choose Your Template Type</h3>
+                      <p className="text-gray-600 mt-1">
+                        Select either <strong>Property Graphics</strong> (for listings) or <strong>Testimonial Graphics</strong> (for reviews) using the tabs at the top.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-lg">
+                      2
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg">Pick a Design</h3>
+                      <p className="text-gray-600 mt-1">
+                        Browse through the template designs and click on one you like. Free templates are available to everyone. <span className="text-amber-600 font-medium">Gold templates</span> require a Pro subscription.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-lg">
+                      3
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg">Select Your Property or Testimonial</h3>
+                      <p className="text-gray-600 mt-1">
+                        Choose which property or testimonial you want to feature in your graphic from your saved listings.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-lg">
+                      4
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg">Generate & Download</h3>
+                      <p className="text-gray-600 mt-1">
+                        Click <strong>"Generate Image"</strong> to create your graphic, then click <strong>"Download"</strong> to save it to your device. You can then share it on social media!
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-50 rounded-xl">
+                    <p className="text-blue-800 text-sm">
+                      <strong>💡 Tip:</strong> For best results, make sure your properties have good photos uploaded in your pipeline, and your testimonials are added in Settings.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <button 
+                onClick={() => setShowHelpModal(false)}
+                className="w-full mt-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors"
+              >
+                Got It, Let's Go!
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Upgrade Modal */}

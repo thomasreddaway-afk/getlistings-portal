@@ -1,7 +1,7 @@
 'use client';
 
 import { DemoLayout } from '@/components/layout';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 // Icons as SVG components to match demo exactly
 const QuestionIcon = () => (
@@ -101,6 +101,8 @@ export default function HelpPage() {
     'help-contact': useRef<HTMLElement>(null),
   };
 
+  const [viewMode, setViewMode] = useState<'quick' | 'detailed'>('detailed');
+
   const scrollToSection = (sectionId: string) => {
     const ref = sectionRefs[sectionId as keyof typeof sectionRefs];
     if (ref?.current) {
@@ -115,19 +117,46 @@ export default function HelpPage() {
         {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white">
           <div className="max-w-4xl mx-auto px-8 py-12">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                <QuestionIcon />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <QuestionIcon />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold">Help & Support Guide</h1>
+                  <p className="text-green-100">Everything you need to get the most from Get Listings</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold">Help & Support Guide</h1>
-                <p className="text-green-100">Everything you need to get the most from Get Listings</p>
+              
+              {/* Quick / Detailed Toggle */}
+              <div className="flex bg-white/20 backdrop-blur rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('quick')}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    viewMode === 'quick'
+                      ? 'bg-white text-green-700 shadow-sm'
+                      : 'text-white/90 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  ⚡ Quick Summary
+                </button>
+                <button
+                  onClick={() => setViewMode('detailed')}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    viewMode === 'detailed'
+                      ? 'bg-white text-green-700 shadow-sm'
+                      : 'text-white/90 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  📖 Detailed Guide
+                </button>
               </div>
             </div>
           </div>
         </div>
         
-        {/* Quick Navigation */}
+        {/* Quick Navigation - Only show for detailed view */}
+        {viewMode === 'detailed' && (
         <div className="border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-8">
             <div className="flex space-x-1 overflow-x-auto py-3 scrollbar-hide">
@@ -142,8 +171,135 @@ export default function HelpPage() {
             </div>
           </div>
         </div>
+        )}
+
+        {/* Quick Summary View */}
+        {viewMode === 'quick' && (
+          <div className="max-w-4xl mx-auto px-8 py-12">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Get Listings in 60 Seconds</h2>
+              <p className="text-gray-600">The key points you need to know — no fluff.</p>
+            </div>
+
+            {/* What It Is */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6 mb-6">
+              <h3 className="font-bold text-gray-900 text-lg mb-3 flex items-center">
+                <span className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">1</span>
+                What Is Get Listings?
+              </h3>
+              <p className="text-gray-700 text-lg">
+                An <strong>early warning system</strong> that finds homeowners thinking about selling <strong>before</strong> they list — so you can be first to reach out.
+              </p>
+            </div>
+
+            {/* How It Works */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-6">
+              <h3 className="font-bold text-gray-900 text-lg mb-3 flex items-center">
+                <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">2</span>
+                How It Works
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white/60 rounded-xl p-4 text-center">
+                  <div className="text-2xl mb-2">📍</div>
+                  <p className="text-gray-700 font-medium">Pick your suburbs</p>
+                </div>
+                <div className="bg-white/60 rounded-xl p-4 text-center">
+                  <div className="text-2xl mb-2">🔍</div>
+                  <p className="text-gray-700 font-medium">We find seller signals</p>
+                </div>
+                <div className="bg-white/60 rounded-xl p-4 text-center">
+                  <div className="text-2xl mb-2">📞</div>
+                  <p className="text-gray-700 font-medium">You reach out first</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Key Sections */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6 mb-6">
+              <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center">
+                <span className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">3</span>
+                The 5 Main Sections
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 bg-white/60 rounded-lg p-3">
+                  <DashboardIcon />
+                  <div>
+                    <strong className="text-gray-900">Dashboard</strong>
+                    <span className="text-gray-600 ml-2">— Your daily snapshot & stats</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 bg-white/60 rounded-lg p-3">
+                  <UsersIcon />
+                  <div>
+                    <strong className="text-gray-900">Seller Scores</strong>
+                    <span className="text-gray-600 ml-2">— All leads ranked by likelihood to sell</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 bg-white/60 rounded-lg p-3">
+                  <FireIcon />
+                  <div>
+                    <strong className="text-gray-900">Hottest Leads</strong>
+                    <span className="text-gray-600 ml-2">— Top opportunities right now</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 bg-white/60 rounded-lg p-3">
+                  <PipelineIcon />
+                  <div>
+                    <strong className="text-gray-900">Pipeline</strong>
+                    <span className="text-gray-600 ml-2">— Track your outreach progress</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 bg-white/60 rounded-lg p-3">
+                  <SettingsIcon />
+                  <div>
+                    <strong className="text-gray-900">Settings</strong>
+                    <span className="text-gray-600 ml-2">— Your suburbs, profile & preferences</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Tips */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 mb-6">
+              <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center">
+                <span className="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">4</span>
+                Quick Success Tips
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-start space-x-3">
+                  <CheckIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-700"><strong>Check Hottest Leads daily</strong> — these are your best opportunities</span>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-700"><strong>Use your Pipeline</strong> — track who you&apos;ve contacted</span>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-700"><strong>5 mins a few times a week</strong> is all you need</span>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <CheckIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-700"><strong>You can&apos;t break anything</strong> — explore freely!</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="text-center mt-10">
+              <p className="text-gray-600 mb-4">Want more details?</p>
+              <button
+                onClick={() => setViewMode('detailed')}
+                className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
+              >
+                📖 Read the Full Guide
+              </button>
+            </div>
+          </div>
+        )}
         
-        {/* Content */}
+        {/* Content - Detailed View */}
+        {viewMode === 'detailed' && (
         <div className="max-w-4xl mx-auto px-8 py-12">
           
           {/* Section 1: Welcome */}
@@ -818,6 +974,7 @@ export default function HelpPage() {
           </section>
           
         </div>
+        )}
         
         {/* Footer */}
         <div className="border-t border-gray-200 bg-gray-50">

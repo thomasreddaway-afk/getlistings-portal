@@ -73,6 +73,9 @@ function getUrgencyStyle(daysOnMarket?: number): { class: string; text: string }
   return { class: 'bg-green-100 text-green-700', text: `${daysOnMarket} days on market` };
 }
 
+// Filter type for expiring listings
+type ExpiryFilter = 'all' | 'under-30' | '30-90' | '90-180' | '180-plus';
+
 function formatPrice(value?: number | string): string {
   if (!value) return '';
   const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.]/g, '')) : value;
@@ -97,6 +100,42 @@ export default function ExpiredListingsPage() {
   const [loadingFresh, setLoadingFresh] = useState(!!cachedData); // Background refresh indicator
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState(cachedData?.stats || { total: 0, urgentCount: 0, soonCount: 0 });
+  const [activeFilter, setActiveFilter] = useState<ExpiryFilter>('all');
+
+  // Calculate filtered listings and counts based on days on market
+  const getFilteredListings = () => {
+    if (activeFilter === 'all') return listings;
+    
+    return listings.filter(listing => {
+      const days = listing.totalDaysInMarket || 0;
+      switch (activeFilter) {
+        case 'under-30':
+          return days < 30; // Fresh - under 30 days
+        case '30-90':
+          return days >= 30 && days < 90; // Getting stale - 1-3 months
+        case '90-180':
+          return days >= 90 && days < 180; // Stale - 3-6 months
+        case '180-plus':
+          return days >= 180; // Very stale - 6+ months
+        default:
+          return true;
+      }
+    });
+  };
+
+  const filteredListings = getFilteredListings();
+
+  // Calculate counts for each category
+  const under30Count = listings.filter(l => (l.totalDaysInMarket || 0) < 30).length;
+  const thirtyTo90Count = listings.filter(l => {
+    const days = l.totalDaysInMarket || 0;
+    return days >= 30 && days < 90;
+  }).length;
+  const ninetyTo180Count = listings.filter(l => {
+    const days = l.totalDaysInMarket || 0;
+    return days >= 90 && days < 180;
+  }).length;
+  const over180Count = listings.filter(l => (l.totalDaysInMarket || 0) >= 180).length;
 
   const loadExpiredListings = async (isBackgroundRefresh = false) => {
     if (!isBackgroundRefresh) {
@@ -190,21 +229,69 @@ export default function ExpiredListingsPage() {
           </div>
         </div>
 
-        {/* Stats Bar */}
+        {/* Filter Bar */}
         <div className="bg-white border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center space-x-6 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
-              <span className="text-gray-600"><span className="font-semibold text-gray-900">{stats.total}</span> Expiring Listings</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span className="text-gray-600"><span className="font-semibold text-gray-900">{stats.urgentCount}</span> Expiring This Week</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-amber-400 rounded-full"></div>
-              <span className="text-gray-600"><span className="font-semibold text-gray-900">{stats.soonCount}</span> Expiring This Month</span>
-            </div>
+          <div className="flex items-center space-x-3 text-sm">
+            <button
+              onClick={() => setActiveFilter('all')}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-all ${
+                activeFilter === 'all'
+                  ? 'bg-orange-100 text-orange-700 ring-2 ring-orange-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <div className={`w-2.5 h-2.5 rounded-full ${activeFilter === 'all' ? 'bg-orange-500' : 'bg-orange-400'}`}></div>
+              <span className="font-medium">{stats.total}</span>
+              <span>All</span>
+            </button>
+            <button
+              onClick={() => setActiveFilter('under-30')}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-all ${
+                activeFilter === 'under-30'
+                  ? 'bg-green-100 text-green-700 ring-2 ring-green-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <div className={`w-2.5 h-2.5 rounded-full ${activeFilter === 'under-30' ? 'bg-green-500' : 'bg-green-400'}`}></div>
+              <span className="font-medium">{under30Count}</span>
+              <span>&lt;30 Days</span>
+            </button>
+            <button
+              onClick={() => setActiveFilter('30-90')}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-all ${
+                activeFilter === '30-90'
+                  ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <div className={`w-2.5 h-2.5 rounded-full ${activeFilter === '30-90' ? 'bg-yellow-500' : 'bg-yellow-400'}`}></div>
+              <span className="font-medium">{thirtyTo90Count}</span>
+              <span>30-90 Days</span>
+            </button>
+            <button
+              onClick={() => setActiveFilter('90-180')}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-all ${
+                activeFilter === '90-180'
+                  ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <div className={`w-2.5 h-2.5 rounded-full ${activeFilter === '90-180' ? 'bg-amber-500' : 'bg-amber-400'}`}></div>
+              <span className="font-medium">{ninetyTo180Count}</span>
+              <span>90-180 Days</span>
+            </button>
+            <button
+              onClick={() => setActiveFilter('180-plus')}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-all ${
+                activeFilter === '180-plus'
+                  ? 'bg-red-100 text-red-700 ring-2 ring-red-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <div className={`w-2.5 h-2.5 rounded-full ${activeFilter === '180-plus' ? 'bg-red-500' : 'bg-red-400'}`}></div>
+              <span className="font-medium">{over180Count}</span>
+              <span>180+ Days</span>
+            </button>
           </div>
         </div>
 
@@ -222,16 +309,30 @@ export default function ExpiredListingsPage() {
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent mb-4"></div>
                 <p className="text-gray-500">Loading expiring listings...</p>
               </div>
-            ) : listings.length === 0 ? (
+            ) : filteredListings.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-4">
                   <Clock className="w-10 h-10 text-orange-500" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Expiring Listings</h3>
-                <p className="text-gray-500 text-center max-w-md">There are currently no listings about to expire in your areas. Check back later for new opportunities.</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {activeFilter === 'all' ? 'No Stale Listings' : `No Listings in ${activeFilter === 'under-30' ? '<30 Days' : activeFilter === '30-90' ? '30-90 Days' : activeFilter === '90-180' ? '90-180 Days' : '180+ Days'} Range`}
+                </h3>
+                <p className="text-gray-500 text-center max-w-md">
+                  {activeFilter === 'all' 
+                    ? 'There are currently no stale listings in your areas. Check back later for new opportunities.'
+                    : 'No listings match this time range. Try selecting a different filter.'}
+                </p>
+                {activeFilter !== 'all' && (
+                  <button 
+                    onClick={() => setActiveFilter('all')}
+                    className="mt-4 text-primary hover:underline text-sm font-medium"
+                  >
+                    View all listings
+                  </button>
+                )}
               </div>
             ) : (
-              listings.map((listing) => {
+              filteredListings.map((listing) => {
                 const address = listing.streetAddress || listing.fullAddress || 'No Address';
                 const urgency = getUrgencyStyle(listing.totalDaysInMarket);
                 const price = formatPrice(listing.salePrice || listing.price || listing.listingPrice);

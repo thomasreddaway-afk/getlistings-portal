@@ -1,6 +1,7 @@
 'use client';
 
 import { DemoLayout } from '@/components/layout';
+import { AIToolModal } from '@/components/AIToolModal';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
@@ -109,6 +110,15 @@ export default function PropertyDetailPage() {
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(defaultPipelineStages);
   const [currentStageIndex, setCurrentStageIndex] = useState<number | null>(null); // null = not in pipeline
   const [savingStage, setSavingStage] = useState(false);
+  
+  // AI Tool Modal state
+  const [aiToolModalOpen, setAiToolModalOpen] = useState(false);
+  const [selectedAiTool, setSelectedAiTool] = useState<string>('');
+
+  const handleAiToolClick = (toolName: string) => {
+    setSelectedAiTool(toolName);
+    setAiToolModalOpen(true);
+  };
 
   // Load pipeline stages from user settings
   const loadPipelineStages = async (token: string): Promise<PipelineStage[]> => {
@@ -547,7 +557,7 @@ export default function PropertyDetailPage() {
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {['Score Explained', 'Property Highlights', 'Similar Properties', 'Price Prediction'].map((tool) => (
-                          <button key={tool} className="group px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-left">
+                          <button key={tool} onClick={() => handleAiToolClick(tool)} className="group px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-left">
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-white/90">{tool}</span>
                               <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 transition-colors" />
@@ -566,7 +576,7 @@ export default function PropertyDetailPage() {
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {['SMS Script', 'Email Introduction', 'Phone Call Script', 'Door Knock Opener'].map((tool) => (
-                          <button key={tool} className="group px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-left">
+                          <button key={tool} onClick={() => handleAiToolClick(tool)} className="group px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-left">
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-white/90">{tool}</span>
                               <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 transition-colors" />
@@ -585,7 +595,7 @@ export default function PropertyDetailPage() {
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {['Personalised Pitch', 'Objection Handling', 'Commission Script', 'Pricing Strategy'].map((tool) => (
-                          <button key={tool} className="group px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-left">
+                          <button key={tool} onClick={() => handleAiToolClick(tool)} className="group px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-left">
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-white/90">{tool}</span>
                               <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 transition-colors" />
@@ -604,7 +614,7 @@ export default function PropertyDetailPage() {
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {['Facebook/Insta Ad', 'Social Media Post', 'Property Description', 'Staging Ideas'].map((tool) => (
-                          <button key={tool} className="group px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-left">
+                          <button key={tool} onClick={() => handleAiToolClick(tool)} className="group px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all text-left">
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-white/90">{tool}</span>
                               <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 transition-colors" />
@@ -754,6 +764,15 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       </div>
+      
+      {/* AI Tool Modal */}
+      <AIToolModal
+        isOpen={aiToolModalOpen}
+        onClose={() => setAiToolModalOpen(false)}
+        toolName={selectedAiTool}
+        leadId={lead?._id || ''}
+        propertyAddress={lead?.fullAddress || lead?.streetAddress || ''}
+      />
     </DemoLayout>
   );
 }

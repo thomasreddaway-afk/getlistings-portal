@@ -3,6 +3,7 @@
 import { DemoLayout } from '@/components/layout';
 import { apiRequest } from '@/lib/api';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { RefreshCw, ChevronUp, ChevronDown, Search, Settings, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -148,6 +149,9 @@ function setCachedLeads(leads: Lead[]): void {
 }
 
 export default function LeadsPage() {
+  // URL search params for filter presets (e.g., /leads?filter=hottest)
+  const searchParams = useSearchParams();
+  
   // Check cache on initial render - must be inside useState to work with SSR/hydration
   const [cachedData] = useState<{ suburbs: Suburb[], counts: Record<string, number> } | null>(() => getCachedSuburbData());
   const [cachedLeads] = useState<Lead[] | null>(() => getCachedLeads());
@@ -170,7 +174,14 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Debounced input
   const [selectedSuburb, setSelectedSuburb] = useState<string>('all');
-  const [scoreFilter, setScoreFilter] = useState<string>('all');
+  // Initialize score filter from URL param (e.g., ?filter=hottest sets to 'high')
+  const [scoreFilter, setScoreFilter] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('filter') === 'hottest' ? 'high' : 'all';
+    }
+    return 'all';
+  });
   const [signalFilter, setSignalFilter] = useState<string>('all');
   const [hideSoldListed, setHideSoldListed] = useState(false);
   
@@ -562,7 +573,7 @@ export default function LeadsPage() {
             ))}
             <div className="flex-1"></div>
             <Link 
-              href="/settings?section=suburbs"
+              href="/settings?tab=subscription"
               className="flex items-center space-x-1 px-3 py-1.5 text-xs text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg"
             >
               <Settings className="w-3.5 h-3.5" />

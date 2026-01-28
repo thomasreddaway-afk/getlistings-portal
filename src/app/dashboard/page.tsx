@@ -3,7 +3,7 @@
 import { DemoLayout } from '@/components/layout';
 import { useAuth } from '@/lib/auth/client';
 import { apiRequest } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Phone, 
@@ -13,8 +13,16 @@ import {
   Award,
   Megaphone,
   Lock,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
+import { 
+  IntelligencePulse, 
+  generatePulseChips, 
+  filterLeadsByChip,
+  type PulseChip 
+} from '@/components/IntelligencePulse';
+import { DashboardV2 } from '@/components/DashboardV2';
 
 // Types for API responses
 interface DashboardMetrics {
@@ -193,9 +201,31 @@ export default function DashboardPage() {
   const cachedMetrics = getCachedData<DashboardMetrics>(CACHE_KEYS.metrics);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(cachedMetrics);
   const [hotLeads, setHotLeads] = useState<Lead[]>(() => getCachedData(CACHE_KEYS.hotLeads) || []);
+  const [allLeads, setAllLeads] = useState<Lead[]>([]); // All leads for filtering
   const [expiredListings, setExpiredListings] = useState<ExpiredListing[]>(() => getCachedData(CACHE_KEYS.expiredListings) || []);
   const [loading, setLoading] = useState(!cachedMetrics); // Only show loading if no cache
   const [error, setError] = useState<string | null>(null);
+  
+  // Dashboard V2 (Intelligence Pulse) state - disabled for now
+  const [dashboardVersion] = useState<1 | 2>(1); // V1 only for now
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [subscribedSuburbs, setSubscribedSuburbs] = useState<string[]>([]);
+  
+  // Generate pulse chips from lead data
+  const pulseChips = useMemo(() => {
+    return generatePulseChips(allLeads, subscribedSuburbs);
+  }, [allLeads, subscribedSuburbs]);
+  
+  // Get the active chip object
+  const activeChip = useMemo(() => {
+    return pulseChips.find(chip => chip.id === activeFilter) || null;
+  }, [pulseChips, activeFilter]);
+  
+  // Filter leads based on active chip
+  const filteredHotLeads = useMemo(() => {
+    if (!activeFilter) return hotLeads;
+    return filterLeadsByChip(allLeads, activeChip).slice(0, 5);
+  }, [hotLeads, allLeads, activeFilter, activeChip]);
 
   // Load dashboard data - uses module-level promise to prevent duplicate calls
   const loadDashboardData = async () => {
@@ -228,6 +258,9 @@ export default function DashboardPage() {
         // Get subscribed suburbs from the dedicated endpoint (like demo.html)
         // Keep as objects with suburb and state for the API
         const subscribedSuburbObjects = suburbsResponse.result || [];
+        
+        // Store suburb names for intelligence pulse
+        setSubscribedSuburbs(subscribedSuburbObjects.map(s => s.suburb));
       
         const newMetrics = {
           unLockedLeadsCount: metricsResponse.unLockedLeadsCount || 0,
@@ -237,26 +270,28 @@ export default function DashboardPage() {
         setMetrics(newMetrics);
         setCachedData(CACHE_KEYS.metrics, newMetrics);
 
-        // Fetch hot leads (top scoring, excluding 100 which are already listed)
-        // Use sellingScore filter and suburbs filter like demo.html
-        const hotLeadsBody: any = {
+        // Fetch more leads for Intelligence Pulse (get 50 for better chip generation)
+        const allLeadsBody: any = {
           page: 1,
-          perPage: 10,
+          perPage: 50,
           sellingScore: { min: 0, max: 99 }
         };
         
         // Filter by subscribed suburbs if available (API expects objects with suburb/state)
         if (subscribedSuburbObjects.length > 0) {
-          hotLeadsBody.suburbs = subscribedSuburbObjects.slice(0, 4).map(s => ({
+          allLeadsBody.suburbs = subscribedSuburbObjects.slice(0, 10).map(s => ({
             suburb: s.suburb,
             state: s.state
           }));
         }
         
-        const leadsResponse = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', hotLeadsBody);
+        const leadsResponse = await apiRequest<{ leads: Lead[] }>('/lead/all', 'POST', allLeadsBody);
         
         if (leadsResponse.leads) {
-          // Sort by score descending and take top 3
+          // Store all leads for intelligence pulse filtering
+          setAllLeads(leadsResponse.leads);
+          
+          // Sort by score descending and take top 3 for hot leads display
           const sorted = [...leadsResponse.leads].sort((a, b) => (b.sellingScore || 0) - (a.sellingScore || 0));
           const topLeads = sorted.slice(0, 3);
           setHotLeads(topLeads);
@@ -309,18 +344,45 @@ export default function DashboardPage() {
 
   const greeting = getGreeting();
   const todayDate = formatDate();
-  const topLead = hotLeads[0];
+  const topLead = filteredHotLeads[0] || hotLeads[0];
+  
+  // Get dynamic subtitle based on pulse chips
+  const getDynamicSubtitle = () => {
+    if (pulseChips.length === 0) return "Here's what needs your attention today";
+    const totalActivity = pulseChips.reduce((sum, chip) => sum + chip.count, 0);
+    if (totalActivity === 0) return "All quiet in your suburbs";
+    return `${totalActivity} new activit${totalActivity > 1 ? 'ies' : 'y'} detected by AI monitoring`;
+  };
 
+  // ===== V2 DASHBOARD (Dark Mode Command Center) =====
+  if (dashboardVersion === 2) {
+    return (
+      <DemoLayout currentPage="dashboard">
+        <DashboardV2
+          user={user}
+          metrics={metrics}
+          hotLeads={hotLeads}
+          allLeads={allLeads}
+          loading={loading}
+          greeting={greeting}
+        />
+      </DemoLayout>
+    );
+  }
+
+  // ===== V1 DASHBOARD (Classic Light Mode) =====
   return (
     <DemoLayout currentPage="dashboard">
       <div className="flex-1 overflow-auto">
-        {/* Header */}
+        {/* Header with Dashboard Version Toggle */}
         <div className="bg-white border-b border-gray-200 px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {greeting}, {(user as any)?.firstName || user?.first_name || 'there'}
-              </h1>
+            <div className="flex-1">
+              <div className="flex items-center space-x-3">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {greeting}, {(user as any)?.firstName || user?.first_name || 'there'}
+                </h1>
+              </div>
               <p className="text-sm text-gray-500 mt-0.5">
                 Here's what needs your attention today
               </p>
@@ -402,7 +464,7 @@ export default function DashboardPage() {
           ) : (
             <div className="bg-gray-100 rounded-2xl p-5 text-center">
               <p className="text-gray-500">No hot leads yet. Subscribe to suburbs to start receiving leads.</p>
-              <Link href="/settings" className="inline-block mt-3 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium">
+              <Link href="/settings?tab=subscription" className="inline-block mt-3 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium">
                 Manage Suburbs
               </Link>
             </div>
@@ -428,7 +490,7 @@ export default function DashboardPage() {
             </Link>
 
             <Link
-              href="/settings"
+              href="/settings?tab=subscription"
               className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-green-300 transition-all cursor-pointer group"
             >
               <div className="flex items-center space-x-3">
@@ -485,7 +547,7 @@ export default function DashboardPage() {
                   <h3 className="font-semibold text-gray-900">Hot Leads</h3>
                 </div>
                 <Link
-                  href="/leads"
+                  href="/hottest"
                   className="text-xs text-red-500 font-medium hover:underline"
                 >
                   See all

@@ -511,6 +511,200 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Portal Preview Section - What You Get Inside */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-blue-100 border border-blue-200 rounded-full px-4 py-2 mb-6">
+              <span className="text-blue-700 text-sm font-semibold">👀 Inside the Portal</span>
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-black text-gray-900 mb-6 leading-tight">
+              Everything You Need to <span className="text-[#c8102e]">Win Listings</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              A complete toolkit designed for modern agents. Here&apos;s what you&apos;ll have access to:
+            </p>
+          </div>
+
+          {/* Feature Grid */}
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            
+            {/* Feature 1: Lead Cards with Seller Scores */}
+            <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 hover:shadow-xl transition-all group">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-[#c8102e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">AI Seller Scores</h3>
+                  <p className="text-sm text-gray-500">See who&apos;s likely to sell</p>
+                </div>
+              </div>
+              
+              {/* Mini Lead Card Preview */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 group-hover:shadow-md transition-all">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="font-bold text-gray-900">42 Smith Street</div>
+                    <div className="text-sm text-gray-500">Bondi Beach, NSW</div>
+                  </div>
+                  <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-sm font-bold">
+                    <span>🔥</span> 87
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">Valuation Request</span>
+                  <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">Downsizing</span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">10+ Years Owned</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature 2: Lead Pipeline */}
+            <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 hover:shadow-xl transition-all group">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Lead Pipeline</h3>
+                  <p className="text-sm text-gray-500">Track every lead to listing</p>
+                </div>
+              </div>
+              
+              {/* Mini Pipeline Preview */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 group-hover:shadow-md transition-all">
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="text-center">
+                    <div className="text-xs font-medium text-gray-500 mb-2">New</div>
+                    <div className="bg-blue-100 rounded-lg p-2">
+                      <div className="w-full h-2 bg-blue-300 rounded mb-1"></div>
+                      <div className="w-3/4 h-2 bg-blue-200 rounded"></div>
+                    </div>
+                    <div className="text-xs font-bold text-gray-900 mt-1">12</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs font-medium text-gray-500 mb-2">Contacted</div>
+                    <div className="bg-yellow-100 rounded-lg p-2">
+                      <div className="w-full h-2 bg-yellow-300 rounded mb-1"></div>
+                    </div>
+                    <div className="text-xs font-bold text-gray-900 mt-1">8</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs font-medium text-gray-500 mb-2">Appraisal</div>
+                    <div className="bg-orange-100 rounded-lg p-2">
+                      <div className="w-full h-2 bg-orange-300 rounded"></div>
+                    </div>
+                    <div className="text-xs font-bold text-gray-900 mt-1">5</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs font-medium text-gray-500 mb-2">Won 🎉</div>
+                    <div className="bg-green-100 rounded-lg p-2">
+                      <div className="w-full h-2 bg-green-400 rounded"></div>
+                    </div>
+                    <div className="text-xs font-bold text-green-600 mt-1">3</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature 3: Content Creation / Marketing */}
+            <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 hover:shadow-xl transition-all group">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Content Creation</h3>
+                  <p className="text-sm text-gray-500">Brand-matched social graphics</p>
+                </div>
+              </div>
+              
+              {/* Mini Content Preview */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 group-hover:shadow-md transition-all">
+                <div className="flex gap-3">
+                  <div className="w-20 h-20 bg-gradient-to-br from-[#c8102e] to-red-700 rounded-xl flex items-center justify-center text-white text-xs font-bold text-center p-2">
+                    ⭐ Just Sold!
+                  </div>
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white text-xs font-bold text-center p-2">
+                    📊 Market Update
+                  </div>
+                  <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center text-white text-xs font-bold text-center p-2">
+                    🏠 New Listing
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-3 text-center">Upload your logo → Get matching templates</p>
+              </div>
+            </div>
+
+            {/* Feature 4: Leaderboard */}
+            <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 hover:shadow-xl transition-all group">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Agent Leaderboard</h3>
+                  <p className="text-sm text-gray-500">See how you stack up</p>
+                </div>
+              </div>
+              
+              {/* Mini Leaderboard Preview */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 group-hover:shadow-md transition-all">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">🥇</span>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600"></div>
+                    <div className="flex-1">
+                      <div className="text-sm font-bold text-gray-900">Sarah M.</div>
+                      <div className="text-xs text-gray-500">Ray White</div>
+                    </div>
+                    <div className="text-sm font-bold text-gray-900">47 pts</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">🥈</span>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600"></div>
+                    <div className="flex-1">
+                      <div className="text-sm font-bold text-gray-900">James T.</div>
+                      <div className="text-xs text-gray-500">LJ Hooker</div>
+                    </div>
+                    <div className="text-sm font-bold text-gray-900">43 pts</div>
+                  </div>
+                  <div className="flex items-center gap-3 bg-yellow-50 -mx-2 px-2 py-1 rounded-lg">
+                    <span className="text-lg">🎯</span>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-400 to-red-600"></div>
+                    <div className="flex-1">
+                      <div className="text-sm font-bold text-gray-900">You</div>
+                      <div className="text-xs text-gray-500">Your Agency</div>
+                    </div>
+                    <div className="text-sm font-bold text-[#c8102e]">38 pts</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="text-center">
+            <Link href="/login" className="inline-flex items-center gap-2 bg-gradient-to-r from-[#c8102e] to-red-600 text-white font-bold px-8 py-4 rounded-xl hover:shadow-lg hover:scale-105 transition-all">
+              <span>Try It Free for 7 Days</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+              </svg>
+            </Link>
+            <p className="text-sm text-gray-500 mt-3">No credit card required</p>
+          </div>
+        </div>
+      </section>
+
       {/* AI Revolution Section */}
       <section className="py-24 bg-gradient-to-b from-gray-900 via-gray-900 to-black relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
