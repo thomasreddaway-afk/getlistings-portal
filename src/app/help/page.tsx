@@ -156,8 +156,8 @@ export default function HelpPage() {
             </div>
             
             <div className="prose prose-gray max-w-none">
-              <div className="bg-green-50 border border-green-100 rounded-2xl p-6 mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+              <div className="bg-green-50 border border-green-100 rounded-2xl px-6 pt-4 pb-5 mb-8">
+                <h3 className="!mt-0 text-lg font-semibold text-gray-900 mb-3 flex items-center">
                   <CheckIcon className="w-5 h-5 text-green-600 mr-2" />
                   What is Get Listings?
                 </h3>
@@ -176,8 +176,8 @@ export default function HelpPage() {
                 We built this because great agents shouldn&apos;t have to rely on luck or door-knocking alone. You deserve better tools — ones that work in the background while you focus on relationships and selling.
               </p>
               
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl px-6 pt-4 pb-5">
+                <h3 className="!mt-0 text-lg font-semibold text-gray-900 mb-3 flex items-center">
                   <InfoIcon className="w-5 h-5 text-amber-600 mr-2" />
                   A few things to keep in mind
                 </h3>
@@ -215,48 +215,40 @@ export default function HelpPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="bg-white border border-gray-200 rounded-xl p-5">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 font-bold">1</span>
-                    </div>
-                    <h4 className="font-semibold text-gray-900">We watch your suburbs</h4>
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
+                    <span className="text-blue-600 font-bold">1</span>
                   </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">We watch your suburbs</h4>
                   <p className="text-sm text-gray-600 mb-0">You tell us which suburbs you work in. We monitor those areas for activity that might indicate a seller.</p>
                 </div>
                 
                 <div className="bg-white border border-gray-200 rounded-xl p-5">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 font-bold">2</span>
-                    </div>
-                    <h4 className="font-semibold text-gray-900">We spot the signals</h4>
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
+                    <span className="text-blue-600 font-bold">2</span>
                   </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">We spot the signals</h4>
                   <p className="text-sm text-gray-600 mb-0">Things like property searches, valuation requests, listing changes, and other behaviours that suggest someone might sell.</p>
                 </div>
                 
                 <div className="bg-white border border-gray-200 rounded-xl p-5">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 font-bold">3</span>
-                    </div>
-                    <h4 className="font-semibold text-gray-900">Opportunities come to you</h4>
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
+                    <span className="text-blue-600 font-bold">3</span>
                   </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Opportunities come to you</h4>
                   <p className="text-sm text-gray-600 mb-0">We show you the properties and people worth paying attention to — ranked by how likely they are to sell soon.</p>
                 </div>
                 
                 <div className="bg-white border border-gray-200 rounded-xl p-5">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 font-bold">4</span>
-                    </div>
-                    <h4 className="font-semibold text-gray-900">You decide what to do</h4>
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
+                    <span className="text-blue-600 font-bold">4</span>
                   </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">You decide what to do</h4>
                   <p className="text-sm text-gray-600 mb-0">You choose which leads to reach out to, how to contact them, and when. Get Listings gives you the information — you make the call.</p>
                 </div>
               </div>
               
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-                <h4 className="font-semibold text-gray-900 mb-2">Think of it like this:</h4>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl px-6 pt-4 pb-5">
+                <h4 className="!mt-0 font-semibold text-gray-900 mb-2">Think of it like this:</h4>
                 <p className="text-gray-600 mb-0">
                   Imagine having a really good assistant who spends all day watching your suburbs, reading the signs, and handing you a list of &quot;these people are worth a call.&quot; That&apos;s what Get Listings does — quietly, in the background, every day.
                 </p>
@@ -327,8 +319,8 @@ export default function HelpPage() {
                 The higher the score, the more signals we&apos;ve seen that suggest they might be ready to move.
               </p>
               
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-6">
-                <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 pt-4 pb-5 mb-6">
+                <h4 className="!mt-0 font-semibold text-gray-900 mb-2 flex items-center">
                   <InfoIcon className="w-5 h-5 text-blue-600 mr-2" />
                   Your first 5–10 minutes
                 </h4>
@@ -342,8 +334,8 @@ export default function HelpPage() {
                 </ol>
               </div>
               
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
-                <h4 className="font-semibold text-gray-900 mb-2">What NOT to worry about right now:</h4>
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl px-6 pt-4 pb-5">
+                <h4 className="!mt-0 font-semibold text-gray-900 mb-2">What NOT to worry about right now:</h4>
                 <ul className="space-y-1 text-gray-700 mb-0">
                   <li>• You don&apos;t need to set up anything complicated</li>
                   <li>• You don&apos;t need to connect other systems</li>
@@ -370,106 +362,92 @@ export default function HelpPage() {
               
               {/* Dashboard */}
               <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <DashboardIcon />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Dashboard</h3>
-                    <p className="text-gray-600 mb-3"><strong>What it is:</strong> Your home screen. A quick overview of what&apos;s happening in your suburbs.</p>
-                    <p className="text-gray-600 mb-3"><strong>Why it matters:</strong> It helps you see at a glance whether there&apos;s anything urgent to look at today.</p>
-                    <p className="text-gray-600 mb-0"><strong>What to do:</strong> Check it when you log in. Look at your hottest leads and any expiring listings.</p>
-                  </div>
+                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
+                  <DashboardIcon />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Dashboard</h3>
+                <div>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">What it is:</strong> Your home screen. A quick overview of what&apos;s happening in your suburbs.</p>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">Why it matters:</strong> It helps you see at a glance whether there&apos;s anything urgent to look at today.</p>
+                  <p className="text-gray-600 mb-0"><strong className="text-primary">What to do:</strong> Check it when you log in. Look at your hottest leads and any expiring listings.</p>
                 </div>
               </div>
               
               {/* Seller Scores */}
               <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <UsersIcon />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Seller Scores</h3>
-                    <p className="text-gray-600 mb-3"><strong>What it is:</strong> A ranked list of properties in your suburbs, scored by how likely the owner is to sell.</p>
-                    <p className="text-gray-600 mb-3"><strong>Why it matters:</strong> This is your prospecting list. Instead of guessing who to call, you can focus on the people showing real signs of intent.</p>
-                    <p className="text-gray-600 mb-0"><strong>What to do:</strong> Review the top leads regularly. Click on any lead to see more details before reaching out.</p>
-                  </div>
+                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
+                  <UsersIcon />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Seller Scores</h3>
+                <div>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">What it is:</strong> A ranked list of properties in your suburbs, scored by how likely the owner is to sell.</p>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">Why it matters:</strong> This is your prospecting list. Instead of guessing who to call, you can focus on the people showing real signs of intent.</p>
+                  <p className="text-gray-600 mb-0"><strong className="text-primary">What to do:</strong> Review the top leads regularly. Click on any lead to see more details before reaching out.</p>
                 </div>
               </div>
               
               {/* Hottest Leads */}
               <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <FireIcon />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Hottest Leads</h3>
-                    <p className="text-gray-600 mb-3"><strong>What it is:</strong> The leads showing the strongest signals right now — the ones worth prioritising.</p>
-                    <p className="text-gray-600 mb-3"><strong>Why it matters:</strong> If you only have time to reach out to a few people, these are the ones to focus on.</p>
-                    <p className="text-gray-600 mb-0"><strong>What to do:</strong> Check this list regularly. These are your highest-priority opportunities.</p>
-                  </div>
+                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mb-4">
+                  <FireIcon />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Hottest Leads</h3>
+                <div>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">What it is:</strong> The leads showing the strongest signals right now — the ones worth prioritising.</p>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">Why it matters:</strong> If you only have time to reach out to a few people, these are the ones to focus on.</p>
+                  <p className="text-gray-600 mb-0"><strong className="text-primary">What to do:</strong> Check this list regularly. These are your highest-priority opportunities.</p>
                 </div>
               </div>
               
               {/* Expiring Listings */}
               <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <ClockIcon />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Expiring Listings</h3>
-                    <p className="text-gray-600 mb-3"><strong>What it is:</strong> Properties currently on the market with another agent, where the listing period is about to end.</p>
-                    <p className="text-gray-600 mb-3"><strong>Why it matters:</strong> These sellers have already committed to selling — they just haven&apos;t sold yet. They may be open to a fresh approach.</p>
-                    <p className="text-gray-600 mb-0"><strong>What to do:</strong> Review these leads and consider a respectful, professional outreach.</p>
-                  </div>
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+                  <ClockIcon />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Expiring Listings</h3>
+                <div>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">What it is:</strong> Properties currently on the market with another agent, where the listing period is about to end.</p>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">Why it matters:</strong> These sellers have already committed to selling — they just haven&apos;t sold yet. They may be open to a fresh approach.</p>
+                  <p className="text-gray-600 mb-0"><strong className="text-primary">What to do:</strong> Review these leads and consider a respectful, professional outreach.</p>
                 </div>
               </div>
               
               {/* Valuation Requests */}
               <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <StarIcon />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Valuation Requests (PRO)</h3>
-                    <p className="text-gray-600 mb-3"><strong>What it is:</strong> Homeowners who have actively requested a property valuation or appraisal.</p>
-                    <p className="text-gray-600 mb-3"><strong>Why it matters:</strong> These people have raised their hand. They&apos;re not just thinking about selling — they&apos;re actively seeking information.</p>
-                    <p className="text-gray-600 mb-0"><strong>What to do:</strong> Follow up quickly. These are warm leads who expect to hear from an agent.</p>
-                  </div>
+                <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center mb-4">
+                  <StarIcon />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Valuation Requests (PRO)</h3>
+                <div>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">What it is:</strong> Homeowners who have actively requested a property valuation or appraisal.</p>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">Why it matters:</strong> These people have raised their hand. They&apos;re not just thinking about selling — they&apos;re actively seeking information.</p>
+                  <p className="text-gray-600 mb-0"><strong className="text-primary">What to do:</strong> Follow up quickly. These are warm leads who expect to hear from an agent.</p>
                 </div>
               </div>
               
               {/* Lead Pipeline */}
               <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <PipelineIcon />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Lead Pipeline</h3>
-                    <p className="text-gray-600 mb-3"><strong>What it is:</strong> A visual way to track where each of your leads is in the process — from first contact to listing.</p>
-                    <p className="text-gray-600 mb-3"><strong>Why it matters:</strong> It helps you stay organised and make sure no opportunity falls through the cracks.</p>
-                    <p className="text-gray-600 mb-0"><strong>What to do:</strong> As you work with leads, move them through the stages to keep track of progress.</p>
-                  </div>
+                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
+                  <PipelineIcon />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Lead Pipeline</h3>
+                <div>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">What it is:</strong> A visual way to track where each of your leads is in the process — from first contact to listing.</p>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">Why it matters:</strong> It helps you stay organised and make sure no opportunity falls through the cracks.</p>
+                  <p className="text-gray-600 mb-0"><strong className="text-primary">What to do:</strong> As you work with leads, move them through the stages to keep track of progress.</p>
                 </div>
               </div>
               
               {/* Settings */}
               <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <SettingsIcon />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Settings</h3>
-                    <p className="text-gray-600 mb-3"><strong>What it is:</strong> Where you manage your profile, suburbs, and account preferences.</p>
-                    <p className="text-gray-600 mb-3"><strong>Why it matters:</strong> This is where you can update your contact details, change which suburbs you&apos;re subscribed to, and adjust your preferences.</p>
-                    <p className="text-gray-600 mb-0"><strong>What to do:</strong> Check this if you need to update anything. Otherwise, you can leave it alone.</p>
-                  </div>
+                <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center mb-4">
+                  <SettingsIcon />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Settings</h3>
+                <div>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">What it is:</strong> Where you manage your profile, suburbs, and account preferences.</p>
+                  <p className="text-gray-600 mb-3"><strong className="text-primary">Why it matters:</strong> This is where you can update your contact details, change which suburbs you&apos;re subscribed to, and adjust your preferences.</p>
+                  <p className="text-gray-600 mb-0"><strong className="text-primary">What to do:</strong> Check this if you need to update anything. Otherwise, you can leave it alone.</p>
                 </div>
               </div>
             </div>
@@ -489,38 +467,32 @@ export default function HelpPage() {
                 You don&apos;t need to be a power user to get results. Here&apos;s a simple routine that works.
               </p>
               
-              <div className="bg-green-50 border border-green-100 rounded-2xl p-6 mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">A simple weekly routine</h3>
+              <div className="bg-green-50 border border-green-100 rounded-2xl px-6 pt-4 pb-5 mb-8">
+                <h3 className="!mt-0 text-lg font-semibold text-gray-900 mb-4">A simple weekly routine</h3>
                 
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                <div className="space-y-6">
+                  <div>
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm mb-2">
                       <span className="text-green-600 font-bold">M</span>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Monday — Review your dashboard</h4>
-                      <p className="text-sm text-gray-600 mb-0">Check what&apos;s new. Look at your hottest leads and any expiring listings.</p>
-                    </div>
+                    <h4 className="font-medium text-gray-900 mb-1">Monday — Review your dashboard</h4>
+                    <p className="text-sm text-gray-600 mb-0">Check what&apos;s new. Look at your hottest leads and any expiring listings.</p>
                   </div>
                   
-                  <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <div>
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm mb-2">
                       <span className="text-green-600 font-bold">W</span>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Wednesday — Take action on 2–3 leads</h4>
-                      <p className="text-sm text-gray-600 mb-0">Pick a few high-scoring leads and reach out. A call, a letter, or a door knock.</p>
-                    </div>
+                    <h4 className="font-medium text-gray-900 mb-1">Wednesday — Take action on 2–3 leads</h4>
+                    <p className="text-sm text-gray-600 mb-0">Pick a few high-scoring leads and reach out. A call, a letter, or a door knock.</p>
                   </div>
                   
-                  <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <div>
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm mb-2">
                       <span className="text-green-600 font-bold">F</span>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Friday — Update your pipeline</h4>
-                      <p className="text-sm text-gray-600 mb-0">Move any leads you&apos;ve contacted through the stages. Note any progress or next steps.</p>
-                    </div>
+                    <h4 className="font-medium text-gray-900 mb-1">Friday — Update your pipeline</h4>
+                    <p className="text-sm text-gray-600 mb-0">Move any leads you&apos;ve contacted through the stages. Note any progress or next steps.</p>
                   </div>
                 </div>
               </div>
@@ -560,8 +532,8 @@ export default function HelpPage() {
                 </div>
               </div>
               
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-                <h4 className="font-semibold text-gray-900 mb-2">Remember:</h4>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl px-6 pt-4 pb-5">
+                <h4 className="!mt-0 font-semibold text-gray-900 mb-2">Remember:</h4>
                 <p className="text-gray-700 mb-0">
                   <strong>Consistency beats complexity.</strong> You don&apos;t need to use every feature. You don&apos;t need to be perfect. Just check in, take action, and repeat.
                 </p>
@@ -708,8 +680,8 @@ export default function HelpPage() {
             </div>
             
             <div className="prose prose-gray max-w-none">
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-8">
-                <p className="text-lg text-gray-700 mb-0">
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 pt-4 pb-5 mb-8">
+                <p className="!mt-0 text-lg text-gray-700 mb-0">
                   If you&apos;ve made it this far and you&apos;re thinking <em>&quot;This sounds good, but I&apos;m not great with technology&quot;</em> — this section is for you.
                 </p>
               </div>
@@ -758,8 +730,8 @@ export default function HelpPage() {
                 </ol>
               </div>
               
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6 mb-8">
-                <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl px-6 pt-4 pb-5 mb-8">
+                <h4 className="!mt-0 font-semibold text-gray-900 mb-2 flex items-center">
                   <InfoIcon className="w-5 h-5 text-amber-600 mr-2" />
                   What Get Listings replaces:
                 </h4>
@@ -833,8 +805,8 @@ export default function HelpPage() {
                 </li>
               </ul>
               
-              <div className="bg-green-50 border border-green-100 rounded-2xl p-6">
-                <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+              <div className="bg-green-50 border border-green-100 rounded-2xl px-6 pt-4 pb-5">
+                <h4 className="!mt-0 font-semibold text-gray-900 mb-2 flex items-center">
                   <CheckIcon className="w-5 h-5 text-green-600 mr-2" />
                   One last thing:
                 </h4>

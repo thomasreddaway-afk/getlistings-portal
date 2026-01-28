@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { DemoLayout } from '@/components/layout';
 import { CheckCircle, User, Users, Award, Settings, PieChart, Globe, HelpCircle, Lock } from 'lucide-react';
+import { RecruitmentPricingModal } from '@/components/RecruitmentPricingModal';
 
 const roleTypes = [
   { icon: User, title: 'Sales Agents', desc: 'Listing & selling specialists', color: 'violet' },
@@ -25,8 +27,14 @@ const steps = [
 ];
 
 export default function TalentPage() {
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+
   return (
     <DemoLayout currentPage="talent">
+      <RecruitmentPricingModal 
+        isOpen={isPricingModalOpen} 
+        onClose={() => setIsPricingModalOpen(false)} 
+      />
       <div className="flex-1 overflow-auto bg-white">
         {/* Hero Section */}
         <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-violet-900 text-white">
@@ -43,7 +51,12 @@ export default function TalentPage() {
               Hire or be hired — discreetly, professionally, and based on real performance. No recruiters. No cold calls. No public profiles.
             </p>
             <div className="flex items-center space-x-4">
-              <button className="px-8 py-4 bg-white text-slate-900 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg">Post an Opportunity</button>
+              <button 
+                onClick={() => setIsPricingModalOpen(true)}
+                className="px-8 py-4 bg-white text-slate-900 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+              >
+                Post an Opportunity
+              </button>
               <button className="px-8 py-4 border border-white/30 text-white rounded-xl font-medium hover:bg-white/10 transition-colors">Explore Opportunities</button>
             </div>
             <div className="mt-12 pt-8 border-t border-white/10">
@@ -142,7 +155,12 @@ export default function TalentPage() {
               Whether you're hiring or exploring, start the conversation discreetly.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-12">
-              <button className="px-10 py-5 bg-white text-violet-700 font-semibold rounded-xl hover:bg-violet-50 transition-colors shadow-xl text-lg">Post an Opportunity</button>
+              <button 
+                onClick={() => setIsPricingModalOpen(true)}
+                className="px-10 py-5 bg-white text-violet-700 font-semibold rounded-xl hover:bg-violet-50 transition-colors shadow-xl text-lg"
+              >
+                Post an Opportunity
+              </button>
               <button className="px-10 py-5 border-2 border-white/30 text-white font-semibold rounded-xl hover:border-white/50 hover:bg-white/10 transition-colors text-lg">Browse Opportunities</button>
             </div>
             <div className="flex items-center justify-center space-x-8 text-sm text-violet-200">
