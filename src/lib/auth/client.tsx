@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
 import { User } from '@/types';
 
-const API_BASE_URL = 'https://api.prop.deals/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
 
 /**
  * Auth context value
@@ -62,17 +62,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount
   useEffect(() => {
-    const token = localStorage.getItem('propdeals_token');
+    const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
     const savedUser = localStorage.getItem('propdeals_user');
     
     if (token && savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
+        
+        // Set cookie for middleware authentication check if not already set
+        // Cookie expires in 30 days
+        const expires = new Date();
+        expires.setTime(expires.getTime() + 30 * 24 * 60 * 60 * 1000);
+        document.cookie = `auth-token=${token}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
       } catch (err) {
         console.error('Error parsing saved user:', err);
+        localStorage.removeItem('propdeals_jwt');
         localStorage.removeItem('propdeals_token');
         localStorage.removeItem('propdeals_user');
+        // Clear cookie on error
+        document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       }
     }
     
@@ -138,7 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Store tokens
       if (data.accessToken) {
-        localStorage.setItem('propdeals_token', data.accessToken);
+        localStorage.setItem('propdeals_jwt', data.accessToken);
+        
+        // Set cookie for middleware authentication check
+        // Cookie expires in 30 days
+        const expires = new Date();
+        expires.setTime(expires.getTime() + 30 * 24 * 60 * 60 * 1000);
+        document.cookie = `auth-token=${data.accessToken}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
         
         if (data.refreshToken) {
           localStorage.setItem('propdeals_refresh', data.refreshToken);
@@ -167,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign out
   const signOut = useCallback(async () => {
+    localStorage.removeItem('propdeals_jwt');
     localStorage.removeItem('propdeals_token');
     localStorage.removeItem('propdeals_refresh');
     localStorage.removeItem('propdeals_user');
@@ -177,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Get stored token for API calls
   const getToken = useCallback((): string | null => {
-    return localStorage.getItem('propdeals_token');
+    return localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
   }, []);
 
   const value: AuthContextValue = {

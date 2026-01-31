@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/client';
@@ -11,14 +12,82 @@ import { cn } from '@/lib/utils/cn';
 export function DemoSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  
+  // Try to get user from localStorage or fetch from leaderboard (same as demo.html)
+  const [localUser, setLocalUser] = React.useState<any>(null);
+  
+  React.useEffect(() => {
+    async function loadUserProfile() {
+      if (user) return; // Already have user from context
+      
+      // First try cached user from localStorage (same key as demo.html)
+      const cachedUser = localStorage.getItem('propdeals_user');
+      if (cachedUser) {
+        try {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed.firstName || parsed.name) {
+            setLocalUser(parsed);
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to parse cached user');
+        }
+      }
+      
+      // Get token - check both keys (demo uses propdeals_jwt, portal uses propdeals_token)
+      const token = localStorage.getItem('propdeals_jwt') || localStorage.getItem('propdeals_token');
+      if (!token) return;
+      
+      // Fetch user profile from /user/me endpoint
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://prop.deals/v1';
+      try {
+        const response = await fetch(`${apiUrl}/user/me`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          console.log('User profile fetch failed:', response.status);
+          return;
+        }
+        
+        const userData = await response.json();
+        
+        if (userData && (userData.firstName || userData.lastName)) {
+          console.log('Fetched user profile:', userData.firstName, userData.lastName);
+          const userProfile = {
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+            agencyName: userData.agencyName || userData.agency || userData.businessName || '',
+            avatar: userData.profilePicture,
+            role: 'Agent'
+          };
+          localStorage.setItem('propdeals_user', JSON.stringify(userProfile));
+          setLocalUser(userProfile);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user profile:', err);
+      }
+    }
+    
+    loadUserProfile();
+  }, [user]);
+  
+  const displayUser = user || localUser;
 
   const isActive = (path: string) => pathname === path;
 
   // Get user initials
   const getInitials = () => {
-    if (!user?.first_name) return '??';
-    const first = user.first_name?.[0] || '';
-    const last = user.last_name?.[0] || '';
+    const firstName = displayUser?.first_name || displayUser?.firstName || '';
+    const lastName = displayUser?.last_name || displayUser?.lastName || '';
+    if (!firstName) return '??';
+    const first = firstName[0] || '';
+    const last = lastName[0] || '';
     return `${first}${last}`.toUpperCase();
   };
 
@@ -33,8 +102,8 @@ export function DemoSidebar() {
             </svg>
           </div>
           <div>
-            <h1 className="font-bold text-gray-900">Get Listings</h1>
-            <p className="text-sm text-gray-500">Desktop Portal</p>
+            <h1 className="font-bold text-gray-900 tracking-wider">Get Listings</h1>
+            <p className="text-sm text-gray-500 tracking-wider">Desktop Portal</p>
           </div>
         </div>
       </div>
@@ -42,7 +111,7 @@ export function DemoSidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {/* Dashboard */}
-        <NavItem href="/" icon={DashboardIcon} active={isActive('/')}>
+        <NavItem href="/dashboard" icon={DashboardIcon} active={isActive('/dashboard')}>
           Dashboard
         </NavItem>
         
@@ -59,9 +128,6 @@ export function DemoSidebar() {
           </NavItem>
           <NavItem href="/expired" icon={ClockIcon} active={isActive('/expired')}>
             Expiring Listings
-          </NavItem>
-          <NavItem href="/nearby" icon={MapPinIcon} active={isActive('/nearby')}>
-            Territory Expansion
           </NavItem>
           <NavItem href="/pipeline" icon={KanbanIcon} active={isActive('/pipeline')}>
             Lead Pipeline
@@ -80,26 +146,26 @@ export function DemoSidebar() {
         
         {/* Insights Section */}
         <NavSection title="Insights">
-          <NavItem href="/analytics" icon={ChartIcon} active={isActive('/analytics')}>
+          <NavItem href="/analytics" icon={ChartIcon} active={isActive('/analytics')} badge="SOON" badgeColor="gray" disabled>
             Analytics
           </NavItem>
           <NavItem href="/leaderboard" icon={BadgeIcon} active={isActive('/leaderboard')}>
             Leaderboard
           </NavItem>
-          <NavItem href="/competitor-analysis" icon={SparklesIcon} active={isActive('/competitor-analysis')} badge="NEW" badgeColor="emerald">
+          <NavItem href="/competitor-analysis" icon={SparklesIcon} active={isActive('/competitor-analysis')} badge="SOON" badgeColor="gray" disabled>
             Competitor Analysis
           </NavItem>
         </NavSection>
         
         {/* Growth Section */}
         <NavSection title="Growth">
-          <NavItem href="/launchpad" icon={BuildingIcon} active={isActive('/launchpad')} badge="NEW" badgeColor="amber">
+          <NavItem href="/launchpad" icon={BuildingIcon} active={isActive('/launchpad')}>
             Launch An Agency
           </NavItem>
-          <NavItem href="/buyerdemand" icon={UsersIcon} active={isActive('/buyerdemand')} badge="NEW" badgeColor="blue">
+          <NavItem href="/buyerdemand" icon={UsersIcon} active={isActive('/buyerdemand')}>
             Find Buyers
           </NavItem>
-          <NavItem href="/talent" icon={BriefcaseIcon} active={isActive('/talent')} badge="NEW" badgeColor="violet">
+          <NavItem href="/talent" icon={BriefcaseIcon} active={isActive('/talent')}>
             Recruitment
           </NavItem>
         </NavSection>
@@ -123,10 +189,14 @@ export function DemoSidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : 'Loading...'}
+              {displayUser?.first_name || displayUser?.firstName 
+                ? `${displayUser.first_name || displayUser.firstName} ${displayUser.last_name || displayUser.lastName || ''}`.trim()
+                : 'Loading...'}
             </p>
             <p className="text-xs text-gray-500 truncate">
-              {user?.agency_name || 'Agent'}
+              {displayUser?.agency_name || displayUser?.agencyName || displayUser?.agency
+                ? `Agent • ${displayUser.agency_name || displayUser.agencyName || displayUser.agency}`
+                : 'Agent'}
             </p>
           </div>
           <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,26 +226,50 @@ interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
   active?: boolean;
   badge?: string;
-  badgeColor?: 'primary' | 'emerald' | 'amber' | 'blue' | 'violet';
+  badgeColor?: 'primary' | 'emerald' | 'amber' | 'blue' | 'violet' | 'gray';
+  disabled?: boolean;
   children: React.ReactNode;
 }
 
-function NavItem({ href, icon: Icon, active, badge, badgeColor = 'primary', children }: NavItemProps) {
+function NavItem({ href, icon: Icon, active, badge, badgeColor = 'primary', disabled, children }: NavItemProps) {
   const badgeColors = {
     primary: 'bg-primary text-white',
     emerald: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white',
     amber: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white',
     blue: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
     violet: 'bg-gradient-to-r from-violet-500 to-purple-500 text-white',
+    gray: 'bg-gray-400 text-white',
   };
+
+  if (disabled) {
+    return (
+      <div
+        className={cn(
+          'w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative tracking-wider cursor-not-allowed opacity-60',
+          'text-gray-500'
+        )}
+      >
+        <Icon className="w-5 h-5" />
+        <span>{children}</span>
+        {badge && (
+          <span className={cn(
+            'absolute right-3 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide',
+            badgeColors[badgeColor]
+          )}>
+            {badge}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <Link
       href={href}
       className={cn(
-        'w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative',
+        'w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative tracking-wider',
         active
-          ? 'bg-primary/10 text-primary'
+          ? 'bg-primary text-white'
           : 'text-gray-700 hover:bg-gray-100'
       )}
     >
